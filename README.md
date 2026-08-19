@@ -1,8 +1,9 @@
 # ModsPanel
 
-ModsPanel is a shared MelonLoader settings API for BOXROOM mods. It adds a
-scrollable **Mod Settings** screen inside BOXROOM's existing **Mods** tab, so
-individual mods do not need to clone or resize the vanilla Settings layout.
+ModsPanel is a shared MelonLoader UI API for BOXROOM mods. It provides both a
+scrollable **Mod Settings** screen inside BOXROOM's existing **Mods** tab and
+temporary BOXROOM-styled menus that can be opened during gameplay. Individual
+mods no longer need to clone vanilla layouts or maintain their own IMGUI skin.
 
 ## Player installation
 
@@ -12,7 +13,7 @@ register their own sections automatically.
 Open BOXROOM's **Mods** tab and select **Mod Settings**. Select the inner
 **Mods** tab to return to BOXROOM's normal Mods screen.
 
-## Mod developer usage
+## Mod developer usage: settings
 
 Reference `ModsPanel.dll`, then register a stable section during your mod's
 initialization:
@@ -69,7 +70,7 @@ ModsPanelApi.RegisterSection("Example.Author.MyMod", "My Mod")
         () => Rebuild());
 ```
 
-Available controls in v1.1.0:
+Available settings controls:
 
 - Folder picker with path, status, Browse, and optional Refresh action
 - Boolean toggle
@@ -83,6 +84,47 @@ Available controls in v1.1.0:
 The panel owns scrolling, section ordering, BOXROOM-like colors, font reuse,
 and scene rebuilding. A mod should register definitions once and keep its actual
 values in its own save/configuration system.
+
+## Mod developer usage: general menus
+
+Create a menu once, populate it with the current choices, and call `Show()`
+from your interaction patch. Menus automatically release the cursor, close on
+Escape, restore the previous cursor state, scale from a 1920x1080 reference
+layout, scroll when needed, and focus the first selectable control.
+
+```csharp
+private static bool createTwoWayLink = true;
+
+private static void OpenRoomPicker()
+{
+    ModMenu menu = ModsUi.CreateMenu(
+            "Example.Author.MultiRoom",
+            "Link Door",
+            "Choose the room containing the destination door.")
+        .AddHeading("Choose a destination")
+        .AddToggle(
+            "Create a two-way link",
+            () => createTwoWayLink,
+            value => createTwoWayLink = value);
+
+    foreach (RoomInfo room in AvailableRooms)
+    {
+        RoomInfo selectedRoom = room;
+        menu.AddButton(
+            selectedRoom.Name,
+            () => LoadDestination(selectedRoom),
+            $"Slot {selectedRoom.Slot}");
+    }
+
+    menu.Closed = () => CancelPendingLink();
+    menu.Show();
+}
+```
+
+General menus support headings, wrapped labels, action buttons with optional
+detail text, toggles, spacers, custom eyebrow/title/subtitle/close text, an
+`Closed` callback, explicit `Close()`, and global `ModsUi.CloseMenu()` /
+`ModsUi.IsMenuOpen` access.
 
 ## Build
 

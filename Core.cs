@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(ModsPanel.Core), "ModsPanel", "1.2.2", "Rusty", null)]
+[assembly: MelonInfo(typeof(ModsPanel.Core), "ModsPanel", "2.0.0", "Rusty", null)]
 [assembly: MelonGame("NestedLoop", "BOXROOM")]
 
 namespace ModsPanel
@@ -15,6 +15,7 @@ namespace ModsPanel
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
             ModsPanelRuntime.Ensure().RequestInstall();
+            ModMenuRuntime.Ensure();
         }
     }
 }
