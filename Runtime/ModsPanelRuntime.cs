@@ -17,11 +17,13 @@ namespace ModsPanel
     /// </summary>
     internal sealed class ModsPanelRuntime : MonoBehaviour
     {
-        private static readonly Color Teal = new Color32(61, 126, 136, 255);
+        private static readonly Color Teal = new Color32(56, 116, 125, 255);
         private static readonly Color TealDark = new Color32(39, 83, 89, 255);
-        private static readonly Color Paper = new Color32(235, 235, 231, 250);
-        private static readonly Color Ink = new Color32(48, 74, 78, 255);
+        private static readonly Color Paper = new Color32(240, 240, 237, 250);
+        private static readonly Color Ink = new Color32(62, 135, 151, 255);
         private static readonly Color Field = new Color32(242, 242, 239, 255);
+        private static readonly Color NativeToggleTeal = new Color32(59, 120, 129, 255);
+        private static readonly Color NativeHeadingTeal = new Color32(56, 111, 118, 255);
 
         private readonly Dictionary<GameObject, bool> nativeChildStates =
             new Dictionary<GameObject, bool>();
@@ -107,13 +109,15 @@ namespace ModsPanel
             // The native Mods page begins immediately below the narrow white strip
             // at the top of ModsTab. Start our alternate page at the same point.
             Stretch((RectTransform)overlay.transform, 18f, 18f, 58f, 18f);
-            overlay.AddComponent<Image>().color = Paper;
+            // Keep BOXROOM's own textured settings sheet visible. A nearly
+            // transparent graphic still gives the overlay a raycast surface
+            // without painting a flat rectangle over the native background.
+            overlay.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.001f);
             Canvas overlayCanvas = overlay.AddComponent<Canvas>();
             overlayCanvas.overrideSorting = true;
             overlayCanvas.sortingOrder = 50;
             overlay.AddComponent<GraphicRaycaster>();
 
-            BuildHeader((RectTransform)overlay.transform);
             BuildScrollArea((RectTransform)overlay.transform);
             overlay.SetActive(false);
             RebuildControls();
@@ -161,25 +165,10 @@ namespace ModsPanel
             settingsRect.sizeDelta = new Vector2(230f, 42f);
         }
 
-        private void BuildHeader(RectTransform parent)
-        {
-            RectTransform header = CreateRect("Header", parent);
-            header.anchorMin = new Vector2(0f, 1f);
-            header.anchorMax = new Vector2(1f, 1f);
-            header.pivot = new Vector2(0.5f, 1f);
-            header.anchoredPosition = Vector2.zero;
-            header.sizeDelta = new Vector2(0f, 90f);
-            header.gameObject.AddComponent<Image>().color = Teal;
-
-            TMP_Text title = CreateText("Title", header, "Registered Mod Settings", 42f, Color.white);
-            Stretch((RectTransform)title.transform, 28f, 28f, 8f, 8f);
-            title.alignment = TextAlignmentOptions.MidlineLeft;
-        }
-
         private void BuildScrollArea(RectTransform parent)
         {
             RectTransform scrollRoot = CreateRect("Settings Scroll", parent);
-            Stretch(scrollRoot, 20f, 20f, 105f, 20f);
+            Stretch(scrollRoot, 38f, 38f, 16f, 20f);
             ScrollRect scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scroll.horizontal = false;
             scroll.vertical = true;
@@ -199,8 +188,8 @@ namespace ModsPanel
             content.sizeDelta = Vector2.zero;
 
             var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(10, 10, 10, 18);
-            layout.spacing = 18f;
+            layout.padding = new RectOffset(10, 10, 10, 24);
+            layout.spacing = 24f;
             layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
@@ -309,18 +298,22 @@ namespace ModsPanel
         private void BuildSection(ModSection section)
         {
             RectTransform card = CreateRect($"Section {section.OwnerId}", content);
-            card.gameObject.AddComponent<Image>().color = new Color32(248, 248, 245, 255);
+            Image frame = card.gameObject.AddComponent<Image>();
+            frame.color = Teal;
+            frame.sprite = FindLoadedSprite("SquareRounded_Border");
+            frame.type = Image.Type.Sliced;
+            frame.pixelsPerUnitMultiplier = 1f;
 
-            float preferredHeight = 86f;
+            float preferredHeight = 90f;
             foreach (ModControl control in section.Controls)
             {
-                preferredHeight += GetControlHeight(control) + 10f;
+                preferredHeight += GetControlHeight(control);
             }
             card.gameObject.AddComponent<LayoutElement>().preferredHeight = preferredHeight;
 
             var cardLayout = card.gameObject.AddComponent<VerticalLayoutGroup>();
             cardLayout.padding = new RectOffset(0, 0, 0, 18);
-            cardLayout.spacing = 10f;
+            cardLayout.spacing = 0f;
             cardLayout.childControlWidth = true;
             cardLayout.childControlHeight = true;
             cardLayout.childForceExpandWidth = true;
@@ -331,9 +324,13 @@ namespace ModsPanel
             // the heading background to disappear and destabilized preferred-size
             // calculation for the rows below it.
             RectTransform headingRoot = CreateRect("Heading", card);
-            headingRoot.gameObject.AddComponent<Image>().color = Teal;
-            headingRoot.gameObject.AddComponent<LayoutElement>().preferredHeight = 68f;
-            TMP_Text heading = CreateText("Text", headingRoot, section.Title, 38f, Color.white);
+            Image headingImage = headingRoot.gameObject.AddComponent<Image>();
+            headingImage.color = NativeHeadingTeal;
+            headingImage.sprite = FindLoadedSprite("SquareRounded_TopOnly");
+            headingImage.type = Image.Type.Sliced;
+            headingImage.pixelsPerUnitMultiplier = 1.5f;
+            headingRoot.gameObject.AddComponent<LayoutElement>().preferredHeight = 72f;
+            TMP_Text heading = CreateText("Text", headingRoot, section.Title, 42f, Color.white);
             Stretch(heading.rectTransform, 24f, 12f, 0f, 0f);
             heading.alignment = TextAlignmentOptions.MidlineLeft;
 
@@ -362,37 +359,37 @@ namespace ModsPanel
         {
             RectTransform row = CreateRow(parent, control.Id, 154f);
 
-            TMP_Text label = CreateText("Label", row, control.Label, 31f, Ink);
-            PlaceTop(label.rectTransform, 0f, 1f, 4f, 38f, 18f, 18f);
+            TMP_Text label = CreateText("Label", row, control.Label, 38f, Ink);
+            PlaceTop(label.rectTransform, 0f, 0.2f, 16f, 58f, 18f, 8f);
             label.alignment = TextAlignmentOptions.MidlineLeft;
 
             Image field = CreateRect("Path", row).gameObject.AddComponent<Image>();
-            field.color = Field;
-            PlaceTop(field.rectTransform, 0f, 0.56f, 44f, 52f, 18f, 8f);
-            Outline outline = field.gameObject.AddComponent<Outline>();
-            outline.effectColor = Teal;
-            outline.effectDistance = new Vector2(2f, -2f);
+            field.color = Teal;
+            field.sprite = FindLoadedSprite("SquareRounded_Border");
+            field.type = Image.Type.Sliced;
+            field.pixelsPerUnitMultiplier = 3.5f;
+            PlaceTop(field.rectTransform, 0.2f, 0.76f, 14f, 64f, 8f, 8f);
 
             TMP_Text pathText = CreateText(
                 "Value",
                 field.rectTransform,
                 SafeInvoke(control.GetValue, string.Empty),
-                25f,
-                Ink);
+                40f,
+                new Color32(91, 116, 122, 255));
             Stretch(pathText.rectTransform, 14f, 14f, 4f, 4f);
             pathText.alignment = TextAlignmentOptions.MidlineLeft;
             pathText.enableAutoSizing = true;
-            pathText.fontSizeMin = 15f;
-            pathText.fontSizeMax = 25f;
+            pathText.fontSizeMin = 22f;
+            pathText.fontSizeMax = 40f;
             pathText.overflowMode = TextOverflowModes.Ellipsis;
 
             TMP_Text status = CreateText(
                 "Status",
                 row,
                 control.GetStatus == null ? string.Empty : SafeInvoke(control.GetStatus, string.Empty),
-                25f,
-                Teal);
-            PlaceTop(status.rectTransform, 0f, 1f, 100f, 36f, 18f, 18f);
+                38f,
+                Ink);
+            PlaceTop(status.rectTransform, 0.2f, 0.61f, 84f, 48f, 8f, 8f);
             status.alignment = TextAlignmentOptions.MidlineLeft;
 
             Button browse = CreateButton("Browse", row, "Browse", () =>
@@ -412,7 +409,7 @@ namespace ModsPanel
                     ? string.Empty
                     : SafeInvoke(control.GetStatus, string.Empty);
             });
-            PlaceTop((RectTransform)browse.transform, 0.57f, 0.78f, 44f, 52f, 8f, 8f);
+            PlaceTop((RectTransform)browse.transform, 0.8f, 1f, 14f, 64f, 8f, 28f);
 
             if (control.Refresh != null)
             {
@@ -424,47 +421,79 @@ namespace ModsPanel
                         ? string.Empty
                         : SafeInvoke(control.GetStatus, string.Empty);
                 });
-                PlaceTop((RectTransform)refresh.transform, 0.79f, 1f, 44f, 52f, 8f, 18f);
+                PlaceTop((RectTransform)refresh.transform, 0.62f, 0.79f, 84f, 54f, 8f, 8f);
             }
         }
 
         private void BuildButtonControl(RectTransform parent, ButtonControl control)
         {
             RectTransform row = CreateRow(parent, control.Id, 92f);
-            TMP_Text label = CreateText("Label", row, control.Label, 31f, Ink);
+            TMP_Text label = CreateText("Label", row, control.Label, 38f, Ink);
             PlaceTop(label.rectTransform, 0f, 0.7f, 10f, 64f, 18f, 8f);
             label.alignment = TextAlignmentOptions.MidlineLeft;
 
             Button button = CreateButton("Action", row, control.ButtonText, control.Pressed);
-            PlaceTop((RectTransform)button.transform, 0.72f, 1f, 12f, 58f, 8f, 18f);
+            PlaceTop((RectTransform)button.transform, 0.72f, 1f, 12f, 58f, 8f, 28f);
         }
 
         private void BuildToggleControl(RectTransform parent, ToggleControl control)
         {
             RectTransform row = CreateRow(parent, control.Id, 92f);
-            TMP_Text label = CreateText("Label", row, control.Label, 31f, Ink);
+            TMP_Text label = CreateText("Label", row, control.Label, 38f, Ink);
             PlaceTop(label.rectTransform, 0f, 0.82f, 10f, 64f, 18f, 8f);
             label.alignment = TextAlignmentOptions.MidlineLeft;
 
             RectTransform toggleRect = CreateRect("Toggle", row);
             toggleRect.anchorMin = new Vector2(1f, 0.5f);
             toggleRect.anchorMax = new Vector2(1f, 0.5f);
-            toggleRect.pivot = new Vector2(1f, 0.5f);
-            toggleRect.anchoredPosition = new Vector2(-22f, 0f);
-            toggleRect.sizeDelta = new Vector2(62f, 62f);
-            Image background = toggleRect.gameObject.AddComponent<Image>();
-            background.color = TealDark;
+            toggleRect.pivot = new Vector2(0.5f, 0.5f);
+            toggleRect.anchoredPosition = new Vector2(-58f, 0f);
+            toggleRect.sizeDelta = new Vector2(62.0468f, 62.0468f);
 
-            RectTransform checkRect = CreateRect("Checkmark", toggleRect);
-            Stretch(checkRect, 9f, 9f, 9f, 9f);
+            // Match BOXROOM's SettingsBoolDisplay hierarchy. The toolbar-frame
+            // sprite supplies the rounded/sliced border and the native tick is
+            // inset by 9.7172 pixels on every side.
+            RectTransform backgroundRect = CreateRect("Background", toggleRect);
+            Stretch(backgroundRect, 0f, 0f, 0f, 0f);
+            Image background = backgroundRect.gameObject.AddComponent<Image>();
+            background.color = NativeToggleTeal;
+            background.sprite = FindLoadedSprite("UI_toolbarFrame");
+            background.type = Image.Type.Sliced;
+            background.pixelsPerUnitMultiplier = 2f;
+
+            RectTransform checkRect = CreateRect("Checkmark", backgroundRect);
+            Stretch(checkRect, 9.7172f, 9.7172f, 9.7172f, 9.7172f);
             Image check = checkRect.gameObject.AddComponent<Image>();
             check.color = Color.white;
+            check.sprite = FindLoadedSprite("UI_WhiteTick");
 
             Toggle toggle = toggleRect.gameObject.AddComponent<Toggle>();
             toggle.targetGraphic = background;
             toggle.graphic = check;
+            toggle.transition = Selectable.Transition.ColorTint;
+            ColorBlock colors = toggle.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.5377358f, 0.5377358f, 0.5377358f, 1f);
+            colors.pressedColor = new Color(0.2924528f, 0.2924528f, 0.2924528f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+            colors.disabledColor = new Color(0.1981132f, 0.1981132f, 0.1981132f, 0.5019608f);
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.1f;
+            toggle.colors = colors;
             toggle.isOn = SafeInvoke(control.GetValue, false);
             toggle.onValueChanged.AddListener(new UnityAction<bool>(control.SetValue));
+        }
+
+        private static Sprite FindLoadedSprite(string spriteName)
+        {
+            foreach (Sprite sprite in Resources.FindObjectsOfTypeAll<Sprite>())
+            {
+                if (sprite != null && sprite.name == spriteName)
+                    return sprite;
+            }
+
+            MelonLogger.Warning($"ModsPanel could not find BOXROOM sprite '{spriteName}'.");
+            return null;
         }
 
         private void BuildTextControl(RectTransform parent, TextControl control)
@@ -547,7 +576,7 @@ namespace ModsPanel
         private void BuildLabelControl(RectTransform parent, LabelControl control)
         {
             RectTransform row = CreateRow(parent, control.Id, 68f);
-            TMP_Text text = CreateText("Text", row, control.Label, 27f, Ink);
+            TMP_Text text = CreateText("Text", row, control.Label, 31f, new Color32(38, 61, 66, 255));
             Stretch(text.rectTransform, 18f, 18f, 4f, 4f);
             text.alignment = TextAlignmentOptions.MidlineLeft;
             text.textWrappingMode = TextWrappingModes.Normal;
@@ -555,7 +584,7 @@ namespace ModsPanel
 
         private void BuildRowLabel(RectTransform row, string label, float anchorMaxX)
         {
-            TMP_Text text = CreateText("Label", row, label, 31f, Ink);
+            TMP_Text text = CreateText("Label", row, label, 38f, Ink);
             PlaceTop(text.rectTransform, 0f, anchorMaxX, 10f, 64f, 18f, 8f);
             text.alignment = TextAlignmentOptions.MidlineLeft;
             text.enableAutoSizing = true;
@@ -568,16 +597,16 @@ namespace ModsPanel
         {
             RectTransform root = CreateRect("Input", parent);
             Image image = root.gameObject.AddComponent<Image>();
-            image.color = Field;
-            Outline outline = root.gameObject.AddComponent<Outline>();
-            outline.effectColor = Teal;
-            outline.effectDistance = new Vector2(2f, -2f);
+            image.color = Teal;
+            image.sprite = FindLoadedSprite("SquareRounded_Border");
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 3.5f;
 
-            TMP_Text text = CreateText("Text Area", root, value, 27f, Ink);
+            TMP_Text text = CreateText("Text Area", root, value, 38f, Ink);
             Stretch(text.rectTransform, 14f, 14f, 4f, 4f);
             text.alignment = TextAlignmentOptions.MidlineLeft;
 
-            TMP_Text hint = CreateText("Placeholder", root, placeholder, 27f,
+            TMP_Text hint = CreateText("Placeholder", root, placeholder, 38f,
                 new Color(Ink.r, Ink.g, Ink.b, 0.45f));
             Stretch(hint.rectTransform, 14f, 14f, 4f, 4f);
             hint.fontStyle = FontStyles.Italic;
@@ -616,7 +645,11 @@ namespace ModsPanel
 
         private TMP_Dropdown BuildDropdown(RectTransform root)
         {
-            root.gameObject.AddComponent<Image>().color = Teal;
+            Image dropdownImage = root.gameObject.AddComponent<Image>();
+            dropdownImage.color = Teal;
+            dropdownImage.sprite = FindLoadedSprite("SquareRounded_Filled");
+            dropdownImage.type = Image.Type.Sliced;
+            dropdownImage.pixelsPerUnitMultiplier = 3.5f;
             TMP_Text caption = CreateText("Label", root, string.Empty, 27f, Color.white);
             Stretch(caption.rectTransform, 14f, 38f, 4f, 4f);
             caption.alignment = TextAlignmentOptions.MidlineLeft;
@@ -701,6 +734,9 @@ namespace ModsPanel
             RectTransform rect = CreateRect(name, parent);
             Image image = rect.gameObject.AddComponent<Image>();
             image.color = Teal;
+            image.sprite = FindLoadedSprite("SquareRounded_Filled");
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 3.5f;
 
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
@@ -711,12 +747,12 @@ namespace ModsPanel
             button.colors = colors;
             button.onClick.AddListener(new UnityAction(pressed));
 
-            TMP_Text label = CreateText("Text", rect, text, 31f, Color.white);
+            TMP_Text label = CreateText("Text", rect, text, 36f, Color.white);
             Stretch(label.rectTransform, 6f, 6f, 3f, 3f);
             label.alignment = TextAlignmentOptions.Center;
             label.enableAutoSizing = true;
             label.fontSizeMin = 18f;
-            label.fontSizeMax = 31f;
+            label.fontSizeMax = 36f;
             return button;
         }
 
