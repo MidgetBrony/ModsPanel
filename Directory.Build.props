@@ -1,0 +1,7 @@
+<Project>
+  <Import Project="Directory.Build.user.props"
+          Condition="Exists('Directory.Build.user.props')" />
+  <PropertyGroup>
+    <GamePath Condition="'$(GamePath)' == ''">$(BOXROOM_GAME_PATH)</GamePath>
+  </PropertyGroup>
+</Project>
