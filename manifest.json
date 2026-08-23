@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "mods-panel",
+  "name": "ModsPanel",
+  "author": "MidgetBrony",
+  "description": "Shared BOXROOM-native settings and menu interface used by supported mods.",
+  "repository": "https://github.com/MidgetBrony/ModsPanel",
+  "requirements": {
+    "melonLoader": "0.7.0"
+  },
+  "dependencies": [],
+  "release": {
+    "provider": "github",
+    "asset": "ModsPanel.*.zip",
+    "destination": "Mods"
+  }
+}

@@ -21,6 +21,10 @@ namespace ModsPanel
         public static bool IsMenuOpen => ModMenuRuntime.HasOpenMenu;
 
         public static void CloseMenu() => ModMenuRuntime.Ensure().CloseMenu();
+
+        /// <summary>Shows a short BOXROOM-styled notification without opening a menu.</summary>
+        public static void ShowToast(string message, float seconds = 4f) =>
+            ModMenuRuntime.Ensure().ShowToast(message, seconds);
     }
 
     /// <summary>A reusable modal menu definition owned by another mod.</summary>
@@ -74,6 +78,14 @@ namespace ModsPanel
         public ModMenu AddToggle(string text, Func<bool> getValue, Action<bool> setValue)
         {
             items.Add(new ModMenuToggle(text, getValue, setValue));
+            RefreshIfOpen();
+            return this;
+        }
+
+        public ModMenu AddTextInput(string label, Func<string> getValue,
+            Action<string> setValue, string placeholder = "")
+        {
+            items.Add(new ModMenuTextInput(label, getValue, setValue, placeholder));
             RefreshIfOpen();
             return this;
         }
@@ -141,5 +153,21 @@ namespace ModsPanel
     {
         internal ModMenuSpacer(float height) { Height = height; }
         internal float Height { get; }
+    }
+
+    internal sealed class ModMenuTextInput : ModMenuItem
+    {
+        internal ModMenuTextInput(string label, Func<string> getValue,
+            Action<string> setValue, string placeholder)
+        {
+            Label = label ?? string.Empty;
+            GetValue = getValue ?? (() => string.Empty);
+            SetValue = setValue ?? (_ => { });
+            Placeholder = placeholder ?? string.Empty;
+        }
+        internal string Label { get; }
+        internal Func<string> GetValue { get; }
+        internal Action<string> SetValue { get; }
+        internal string Placeholder { get; }
     }
 }

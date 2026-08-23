@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using SteamShelf;
+using SteamShelf.Input;
 
 namespace ModsPanel
 {
@@ -18,11 +20,16 @@ namespace ModsPanel
         private static readonly Color Red = new Color32(188, 86, 78, 255);
 
         private GameObject root;
+        private GameObject toastRoot;
+        private float toastUntil;
         private RectTransform content;
         private TMP_FontAsset font;
         private ModMenu openMenu;
         private CursorLockMode previousLockMode;
         private bool previousCursorVisible;
+        private ScrollRect activeScroll;
+        private RectTransform activeViewport;
+        private GameObject lastSelected;
 
         internal static ModMenuRuntime Instance { get; private set; }
         internal static bool HasOpenMenu => Instance != null && Instance.openMenu != null;
@@ -51,6 +58,8 @@ namespace ModsPanel
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            if (Singleton<InputManager>.HasInstance())
+                Singleton<InputManager>.Instance.SwapToInputMap(EInputMap.UI);
             Build(menu);
         }
 
@@ -64,13 +73,63 @@ namespace ModsPanel
             content = null;
             Cursor.lockState = previousLockMode;
             Cursor.visible = previousCursorVisible;
+            if (Singleton<InputManager>.HasInstance())
+                Singleton<InputManager>.Instance.SwapToInputMap(EInputMap.Player);
             SafeInvoke(closing.Closed);
+        }
+
+        internal void ShowToast(string message, float seconds)
+        {
+            if (toastRoot != null) Destroy(toastRoot);
+            toastUntil = Time.realtimeSinceStartup + Mathf.Max(0.5f, seconds);
+
+            toastRoot = new GameObject("ModsPanel Toast", typeof(RectTransform));
+            toastRoot.transform.SetParent(transform, false);
+            Canvas canvas = toastRoot.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 32001;
+            CanvasScaler scaler = toastRoot.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+
+            RectTransform frame = Rect("Toast Frame", toastRoot.transform);
+            frame.anchorMin = frame.anchorMax = new Vector2(0.5f, 1f);
+            frame.pivot = new Vector2(0.5f, 1f);
+            frame.anchoredPosition = new Vector2(0f, -52f);
+            frame.sizeDelta = new Vector2(810f, 82f);
+            Image image = frame.gameObject.AddComponent<Image>();
+            image.color = DeepBlue;
+            image.sprite = FindSprite("SquareRounded_Filled");
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 3.5f;
+
+            font = FindFont();
+            TMP_Text text = TextFill(frame, (message ?? string.Empty).ToUpperInvariant(), 29f, Paper, true);
+            text.alignment = TextAlignmentOptions.Center;
         }
 
         private void Update()
         {
             if (openMenu != null && Input.GetKeyDown(KeyCode.Escape))
                 CloseMenu();
+
+            if (toastRoot != null && Time.realtimeSinceStartup >= toastUntil)
+            {
+                Destroy(toastRoot);
+                toastRoot = null;
+            }
+
+            if (openMenu != null && activeScroll != null && EventSystem.current != null)
+            {
+                GameObject selected = EventSystem.current.currentSelectedGameObject;
+                if (selected != null && selected != lastSelected && selected.transform.IsChildOf(content))
+                {
+                    lastSelected = selected;
+                    KeepVisible(selected.GetComponent<RectTransform>());
+                }
+            }
         }
 
         private void Build(ModMenu menu)
@@ -127,6 +186,9 @@ namespace ModsPanel
             scroll.horizontal = false;
             scroll.vertical = true;
             scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.inertia = true;
+            scroll.decelerationRate = 0.12f;
+            scroll.scrollSensitivity = 65f;
 
             RectTransform viewport = Rect("Viewport", scrollRoot);
             Stretch(viewport, 0f, 24f, 0f, 0f);
@@ -146,6 +208,28 @@ namespace ModsPanel
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             scroll.viewport = viewport;
             scroll.content = content;
+            activeScroll = scroll;
+            activeViewport = viewport;
+
+            RectTransform barRect = Rect("Scrollbar", scrollRoot);
+            barRect.anchorMin = new Vector2(1f, 0f);
+            barRect.anchorMax = Vector2.one;
+            barRect.pivot = new Vector2(1f, 0.5f);
+            barRect.offsetMin = new Vector2(-14f, 0f);
+            barRect.offsetMax = Vector2.zero;
+            Image barBackground = barRect.gameObject.AddComponent<Image>();
+            barBackground.color = new Color(0.13f, 0.30f, 0.34f, 0.25f);
+            RectTransform handleRect = Rect("Handle", barRect);
+            Stretch(handleRect, 0f, 0f, 0f, 0f);
+            Image handle = handleRect.gameObject.AddComponent<Image>();
+            handle.color = Blue;
+            Scrollbar scrollbar = barRect.gameObject.AddComponent<Scrollbar>();
+            scrollbar.handleRect = handleRect;
+            scrollbar.targetGraphic = handle;
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+            scroll.verticalScrollbar = scrollbar;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            scroll.verticalScrollbarSpacing = -14f;
 
             Selectable first = null;
             foreach (ModMenuItem item in menu.Items)
@@ -158,6 +242,21 @@ namespace ModsPanel
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
             if (first != null && EventSystem.current != null)
                 EventSystem.current.SetSelectedGameObject(first.gameObject);
+        }
+
+        private void KeepVisible(RectTransform selected)
+        {
+            if (selected == null || activeViewport == null || content == null) return;
+            Canvas.ForceUpdateCanvases();
+            Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(activeViewport, selected);
+            Rect view = activeViewport.rect;
+            float targetY = content.anchoredPosition.y;
+            if (bounds.min.y < view.yMin + 12f)
+                targetY += view.yMin + 12f - bounds.min.y;
+            else if (bounds.max.y > view.yMax - 12f)
+                targetY -= bounds.max.y - (view.yMax - 12f);
+            float maximum = Mathf.Max(0f, content.rect.height - activeViewport.rect.height);
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, Mathf.Clamp(targetY, 0f, maximum));
         }
 
         private Selectable BuildItem(ModMenuItem item)
@@ -221,6 +320,54 @@ namespace ModsPanel
                 toggle.isOn = SafeValue(option.GetValue, false);
                 toggle.onValueChanged.AddListener(new UnityAction<bool>(value => SafeInvoke(() => option.SetValue(value))));
                 return toggle;
+            }
+            if (item is ModMenuTextInput textInput)
+            {
+                RectTransform row = LayoutRow("Text Input", 154f);
+
+                RectTransform labelRect = Rect("Input Label", row);
+                labelRect.anchorMin = labelRect.anchorMax = new Vector2(0f, 1f);
+                labelRect.pivot = new Vector2(0f, 1f);
+                labelRect.anchoredPosition = Vector2.zero;
+                labelRect.sizeDelta = new Vector2(820f, 46f);
+                TMP_Text inputLabel = labelRect.gameObject.AddComponent<TextMeshProUGUI>();
+                inputLabel.text = textInput.Label;
+                inputLabel.font = font;
+                inputLabel.fontSize = 29f;
+                inputLabel.color = Ink;
+                inputLabel.raycastTarget = false;
+                inputLabel.alignment = TextAlignmentOptions.MidlineLeft;
+
+                RectTransform fieldRect = Rect("Input", row);
+                fieldRect.anchorMin = new Vector2(0f, 0f);
+                fieldRect.anchorMax = new Vector2(1f, 0f);
+                fieldRect.pivot = new Vector2(0.5f, 0f);
+                fieldRect.anchoredPosition = Vector2.zero;
+                fieldRect.sizeDelta = new Vector2(0f, 82f);
+                Image fieldImage = fieldRect.gameObject.AddComponent<Image>();
+                fieldImage.color = new Color32(224, 225, 216, 255);
+                fieldImage.sprite = FindSprite("SquareRounded_Border");
+                fieldImage.type = Image.Type.Sliced;
+                fieldImage.pixelsPerUnitMultiplier = 3.5f;
+
+                TMP_Text value = TextFill(fieldRect, SafeValue(textInput.GetValue, string.Empty), 31f, Ink);
+                Stretch(value.rectTransform, 20f, 20f, 8f, 8f);
+                value.alignment = TextAlignmentOptions.MidlineLeft;
+                TMP_Text placeholder = TextFill(fieldRect, textInput.Placeholder, 31f,
+                    new Color(Ink.r, Ink.g, Ink.b, 0.45f));
+                Stretch(placeholder.rectTransform, 20f, 20f, 8f, 8f);
+                placeholder.fontStyle = FontStyles.Italic;
+                placeholder.alignment = TextAlignmentOptions.MidlineLeft;
+                TMP_InputField input = fieldRect.gameObject.AddComponent<TMP_InputField>();
+                input.textViewport = fieldRect;
+                input.textComponent = value;
+                input.placeholder = placeholder;
+                input.lineType = TMP_InputField.LineType.SingleLine;
+                input.contentType = TMP_InputField.ContentType.Standard;
+                input.text = SafeValue(textInput.GetValue, string.Empty);
+                input.onValueChanged.AddListener(new UnityAction<string>(newValue =>
+                    SafeInvoke(() => textInput.SetValue(newValue))));
+                return input;
             }
             return null;
         }
