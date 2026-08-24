@@ -34,6 +34,7 @@ namespace ModsPanel
         private GameObject overlay;
         private Button modsTabButton;
         private Button settingsTabButton;
+        private bool wasModsTabVisible;
         private RectTransform content;
         private TMP_Text fontTemplate;
         private bool installRequested;
@@ -77,7 +78,12 @@ namespace ModsPanel
                 RebuildControls();
             }
 
-            if (modsTab != null && modsTab.gameObject.activeInHierarchy)
+            bool modsTabVisible = modsTab != null && modsTab.gameObject.activeInHierarchy;
+            if (modsTabVisible && !wasModsTabVisible)
+                FocusModsTabEntry();
+            wasModsTabVisible = modsTabVisible;
+
+            if (modsTabVisible)
             {
                 if (Input.GetKeyDown(KeyCode.JoystickButton5))
                 {
@@ -90,6 +96,14 @@ namespace ModsPanel
                     ClosePanel();
                 }
             }
+        }
+
+        private void FocusModsTabEntry()
+        {
+            if (modsTabButton == null || EventSystem.current == null) return;
+            GameObject selected = EventSystem.current.currentSelectedGameObject;
+            if (selected == null || !selected.activeInHierarchy || !selected.transform.IsChildOf(modsTab))
+                EventSystem.current.SetSelectedGameObject(modsTabButton.gameObject);
         }
 
         private void TryInstall()
