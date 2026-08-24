@@ -389,6 +389,7 @@ namespace ModsPanel
             image.pixelsPerUnitMultiplier = 3.5f;
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
+            rect.gameObject.AddComponent<ControllerSelectionVisual>();
             button.onClick.AddListener(new UnityAction(pressed));
             TMP_Text text = TextFill(rect, caption, 34f, Paper);
             text.alignment = TextAlignmentOptions.Center;

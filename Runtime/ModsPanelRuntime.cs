@@ -218,12 +218,10 @@ namespace ModsPanel
             legend.sizeDelta = new Vector2(0f, 48f);
 
             float x = 22f;
-            AddLegendItem(legend, FindLoadedSprite("Gamepad_Dpad_Left"), "", ref x);
-            AddLegendItem(legend, FindLoadedSprite("Gamepad_Dpad_Right"), "CHOOSE PAGE", ref x);
-            Sprite confirm = Singleton<InputManager>.HasInstance()
-                ? Singleton<InputManager>.Instance.GetInputIconForAction("Confirm") : null;
-            Sprite back = Singleton<InputManager>.HasInstance()
-                ? Singleton<InputManager>.Instance.GetInputIconForAction("Back") : null;
+            AddLegendItem(legend, ControllerGlyphs.ForPath("<Gamepad>/dpad/left"), "", ref x);
+            AddLegendItem(legend, ControllerGlyphs.ForPath("<Gamepad>/dpad/right"), "CHOOSE PAGE", ref x);
+            Sprite confirm = ControllerGlyphs.ForAction("Confirm");
+            Sprite back = ControllerGlyphs.ForAction("Back");
             AddLegendItem(legend, confirm, "SELECT", ref x);
             AddLegendItem(legend, back, "BACK", ref x);
         }
@@ -240,6 +238,9 @@ namespace ModsPanel
                 Image icon = iconRect.gameObject.AddComponent<Image>();
                 icon.sprite = sprite;
                 icon.preserveAspect = true;
+                Shadow shadow = iconRect.gameObject.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
+                shadow.effectDistance = new Vector2(3f, -4f);
                 x += 44f;
             }
             if (!string.IsNullOrEmpty(caption))
@@ -841,6 +842,7 @@ namespace ModsPanel
 
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
+            rect.gameObject.AddComponent<ControllerSelectionVisual>();
             ColorBlock colors = button.colors;
             colors.normalColor = Color.white;
             colors.highlightedColor = new Color(1.1f, 1.1f, 1.1f, 1f);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace ModsPanel
 {
@@ -25,6 +26,9 @@ namespace ModsPanel
         /// <summary>Shows a short BOXROOM-styled notification without opening a menu.</summary>
         public static void ShowToast(string message, float seconds = 4f) =>
             ModMenuRuntime.Ensure().ShowToast(message, seconds);
+
+        /// <summary>Returns a controller-family glyph for an Input System gamepad path.</summary>
+        public static Sprite GetControllerGlyph(string controlPath) => ControllerGlyphs.ForPath(controlPath);
     }
 
     /// <summary>A reusable modal menu definition owned by another mod.</summary>

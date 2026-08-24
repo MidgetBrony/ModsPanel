@@ -5,6 +5,11 @@ scrollable **Mod Settings** screen inside BOXROOM's existing **Mods** tab and
 temporary BOXROOM-styled menus that can be opened during gameplay. Individual
 mods no longer need to clone vanilla layouts or maintain their own IMGUI skin.
 
+Controller prompts use the CC0 Kenney Input Prompts 1.5 pack. ModsPanel embeds
+outlined Xbox, PlayStation, Nintendo Switch, and Steam Deck glyphs and selects
+the family from the controller Unity reports at runtime. The supplied license is
+kept at `Assets/Kenney-Input-Prompts-License.txt`.
+
 ## Player installation
 
 Copy `ModsPanel.dll` into BOXROOM's `Mods` folder. Mods that use ModsPanel will
