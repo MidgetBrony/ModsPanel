@@ -99,9 +99,7 @@ namespace ModsPanel
         private void FocusModsTabEntry()
         {
             if (modsTabButton == null || EventSystem.current == null) return;
-            GameObject selected = EventSystem.current.currentSelectedGameObject;
-            if (selected == null || !selected.activeInHierarchy || !selected.transform.IsChildOf(modsTab))
-                EventSystem.current.SetSelectedGameObject(modsTabButton.gameObject);
+            EventSystem.current.SetSelectedGameObject(modsTabButton.gameObject);
         }
 
         private void TryInstall()
@@ -215,11 +213,9 @@ namespace ModsPanel
             legend.anchorMax = new Vector2(1f, 0f);
             legend.pivot = new Vector2(0.5f, 0f);
             legend.anchoredPosition = new Vector2(0f, 10f);
-            legend.sizeDelta = new Vector2(0f, 48f);
+            legend.sizeDelta = new Vector2(0f, 64f);
 
-            float x = 22f;
-            AddLegendItem(legend, ControllerGlyphs.ForPath("<Gamepad>/dpad/left"), "", ref x);
-            AddLegendItem(legend, ControllerGlyphs.ForPath("<Gamepad>/dpad/right"), "CHOOSE PAGE", ref x);
+            float x = 36f;
             Sprite confirm = ControllerGlyphs.ForAction("Confirm");
             Sprite back = ControllerGlyphs.ForAction("Back");
             AddLegendItem(legend, confirm, "SELECT", ref x);
@@ -234,25 +230,31 @@ namespace ModsPanel
                 iconRect.anchorMin = iconRect.anchorMax = new Vector2(0f, 0.5f);
                 iconRect.pivot = new Vector2(0f, 0.5f);
                 iconRect.anchoredPosition = new Vector2(x, 0f);
-                iconRect.sizeDelta = new Vector2(38f, 38f);
+                iconRect.sizeDelta = new Vector2(52f, 52f);
                 Image icon = iconRect.gameObject.AddComponent<Image>();
                 icon.sprite = sprite;
                 icon.preserveAspect = true;
                 Shadow shadow = iconRect.gameObject.AddComponent<Shadow>();
                 shadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
                 shadow.effectDistance = new Vector2(3f, -4f);
-                x += 44f;
+                x += 62f;
             }
             if (!string.IsNullOrEmpty(caption))
             {
-                TMP_Text label = CreateText("Legend Label", parent, caption, 22f, Ink);
+                TMP_Text label = CreateText("Legend Label", parent, caption, 30f, Color.white);
                 RectTransform labelRect = label.rectTransform;
                 labelRect.anchorMin = labelRect.anchorMax = new Vector2(0f, 0.5f);
                 labelRect.pivot = new Vector2(0f, 0.5f);
                 labelRect.anchoredPosition = new Vector2(x, 0f);
-                labelRect.sizeDelta = new Vector2(170f, 42f);
+                labelRect.sizeDelta = new Vector2(190f, 54f);
                 label.alignment = TextAlignmentOptions.MidlineLeft;
-                x += 180f;
+                Outline outline = label.gameObject.AddComponent<Outline>();
+                outline.effectColor = Color.black;
+                outline.effectDistance = new Vector2(2f, -2f);
+                Shadow textShadow = label.gameObject.AddComponent<Shadow>();
+                textShadow.effectColor = new Color(0f, 0f, 0f, 0.65f);
+                textShadow.effectDistance = new Vector2(4f, -4f);
+                x += 210f;
             }
         }
 

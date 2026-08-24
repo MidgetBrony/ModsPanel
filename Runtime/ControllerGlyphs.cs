@@ -68,10 +68,10 @@ namespace ModsPanel
             if (key == null) return null;
             if (family == "PlayStation") return key switch
             {
-                "south" => "playstation_button_cross_outline.png",
-                "east" => "playstation_button_circle_outline.png",
-                "west" => "playstation_button_square_outline.png",
-                "north" => "playstation_button_triangle_outline.png",
+                "south" => "playstation_button_color_cross.png",
+                "east" => "playstation_button_color_circle.png",
+                "west" => "playstation_button_color_square.png",
+                "north" => "playstation_button_color_triangle.png",
                 "left" => "playstation_dpad_left_outline.png",
                 _ => "playstation_dpad_right_outline.png"
             };
@@ -81,7 +81,7 @@ namespace ModsPanel
             string face = family == "Switch"
                 ? key switch { "south" => "b", "east" => "a", "west" => "y", _ => "x" }
                 : key switch { "south" => "a", "east" => "b", "west" => "x", _ => "y" };
-            return $"{prefix}_button_{face}_outline.png";
+            return family == "Xbox" ? $"xbox_button_color_{face}.png" : $"{prefix}_button_{face}.png";
         }
 
         private static Sprite Load(string family, string file)
