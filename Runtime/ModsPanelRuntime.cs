@@ -35,6 +35,7 @@ namespace ModsPanel
         private Button modsTabButton;
         private Button settingsTabButton;
         private bool wasModsTabVisible;
+        private int settingsFocusFrames;
         private RectTransform content;
         private TMP_Text fontTemplate;
         private bool installRequested;
@@ -85,6 +86,11 @@ namespace ModsPanel
 
             if (modsTabVisible)
             {
+                if (settingsFocusFrames > 0)
+                {
+                    settingsFocusFrames--;
+                    if (settingsFocusFrames == 0) FocusFirstSetting();
+                }
                 if (Input.GetKeyDown(KeyCode.JoystickButton5))
                 {
                     OpenPanel();
@@ -198,6 +204,16 @@ namespace ModsPanel
             settingsRect.anchoredPosition = new Vector2(239f, 0f);
             settingsRect.sizeDelta = new Vector2(230f, 42f);
 
+            TMP_Text controllerLegend = CreateText("Controller Legend", tabs,
+                "LB  MODS     RB  MOD SETTINGS     A  SELECT     B  BACK", 24f, Ink);
+            RectTransform legendRect = controllerLegend.rectTransform;
+            legendRect.anchorMin = new Vector2(1f, 0.5f);
+            legendRect.anchorMax = new Vector2(1f, 0.5f);
+            legendRect.pivot = new Vector2(1f, 0.5f);
+            legendRect.anchoredPosition = new Vector2(-24f, 0f);
+            legendRect.sizeDelta = new Vector2(760f, 42f);
+            controllerLegend.alignment = TextAlignmentOptions.MidlineRight;
+
             Navigation modsNavigation = modsButton.navigation;
             modsNavigation.mode = Navigation.Mode.Explicit;
             modsNavigation.selectOnRight = settingsButton;
@@ -295,7 +311,7 @@ namespace ModsPanel
             overlay.transform.SetAsLastSibling();
             RebuildControls();
             Canvas.ForceUpdateCanvases();
-            FocusFirstSetting();
+            settingsFocusFrames = 2;
         }
 
         private void ClosePanel()
