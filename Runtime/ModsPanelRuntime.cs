@@ -9,6 +9,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using SteamShelf;
+using SteamShelf.Input;
 
 namespace ModsPanel
 {
@@ -90,16 +92,6 @@ namespace ModsPanel
                 {
                     settingsFocusFrames--;
                     if (settingsFocusFrames == 0) FocusFirstSetting();
-                }
-                if (Input.GetKeyDown(KeyCode.JoystickButton5))
-                {
-                    OpenPanel();
-                    if (settingsTabButton != null && overlay != null && !overlay.activeSelf)
-                        EventSystem.current?.SetSelectedGameObject(settingsTabButton.gameObject);
-                }
-                else if (Input.GetKeyDown(KeyCode.JoystickButton4))
-                {
-                    ClosePanel();
                 }
             }
         }
@@ -204,15 +196,7 @@ namespace ModsPanel
             settingsRect.anchoredPosition = new Vector2(239f, 0f);
             settingsRect.sizeDelta = new Vector2(230f, 42f);
 
-            TMP_Text controllerLegend = CreateText("Controller Legend", tabs,
-                "LB  MODS     RB  MOD SETTINGS     A  SELECT     B  BACK", 24f, Ink);
-            RectTransform legendRect = controllerLegend.rectTransform;
-            legendRect.anchorMin = new Vector2(1f, 0.5f);
-            legendRect.anchorMax = new Vector2(1f, 0.5f);
-            legendRect.pivot = new Vector2(1f, 0.5f);
-            legendRect.anchoredPosition = new Vector2(-24f, 0f);
-            legendRect.sizeDelta = new Vector2(760f, 42f);
-            controllerLegend.alignment = TextAlignmentOptions.MidlineRight;
+            BuildControllerLegend(parent);
 
             Navigation modsNavigation = modsButton.navigation;
             modsNavigation.mode = Navigation.Mode.Explicit;
@@ -222,6 +206,53 @@ namespace ModsPanel
             settingsNavigation.mode = Navigation.Mode.Explicit;
             settingsNavigation.selectOnLeft = modsButton;
             settingsButton.navigation = settingsNavigation;
+        }
+
+        private void BuildControllerLegend(RectTransform parent)
+        {
+            RectTransform legend = CreateRect("Controller Legend", parent);
+            legend.anchorMin = new Vector2(0f, 0f);
+            legend.anchorMax = new Vector2(1f, 0f);
+            legend.pivot = new Vector2(0.5f, 0f);
+            legend.anchoredPosition = new Vector2(0f, 10f);
+            legend.sizeDelta = new Vector2(0f, 48f);
+
+            float x = 22f;
+            AddLegendItem(legend, FindLoadedSprite("Gamepad_Dpad_Left"), "", ref x);
+            AddLegendItem(legend, FindLoadedSprite("Gamepad_Dpad_Right"), "CHOOSE PAGE", ref x);
+            Sprite confirm = Singleton<InputManager>.HasInstance()
+                ? Singleton<InputManager>.Instance.GetInputIconForAction("Confirm") : null;
+            Sprite back = Singleton<InputManager>.HasInstance()
+                ? Singleton<InputManager>.Instance.GetInputIconForAction("Back") : null;
+            AddLegendItem(legend, confirm, "SELECT", ref x);
+            AddLegendItem(legend, back, "BACK", ref x);
+        }
+
+        private void AddLegendItem(RectTransform parent, Sprite sprite, string caption, ref float x)
+        {
+            if (sprite != null)
+            {
+                RectTransform iconRect = CreateRect("Glyph", parent);
+                iconRect.anchorMin = iconRect.anchorMax = new Vector2(0f, 0.5f);
+                iconRect.pivot = new Vector2(0f, 0.5f);
+                iconRect.anchoredPosition = new Vector2(x, 0f);
+                iconRect.sizeDelta = new Vector2(38f, 38f);
+                Image icon = iconRect.gameObject.AddComponent<Image>();
+                icon.sprite = sprite;
+                icon.preserveAspect = true;
+                x += 44f;
+            }
+            if (!string.IsNullOrEmpty(caption))
+            {
+                TMP_Text label = CreateText("Legend Label", parent, caption, 22f, Ink);
+                RectTransform labelRect = label.rectTransform;
+                labelRect.anchorMin = labelRect.anchorMax = new Vector2(0f, 0.5f);
+                labelRect.pivot = new Vector2(0f, 0.5f);
+                labelRect.anchoredPosition = new Vector2(x, 0f);
+                labelRect.sizeDelta = new Vector2(170f, 42f);
+                label.alignment = TextAlignmentOptions.MidlineLeft;
+                x += 180f;
+            }
         }
 
         private void BuildScrollArea(RectTransform parent)
