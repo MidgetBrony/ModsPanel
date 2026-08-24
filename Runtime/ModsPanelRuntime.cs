@@ -3,8 +3,10 @@ using SFB;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
@@ -30,6 +32,8 @@ namespace ModsPanel
 
         private RectTransform modsTab;
         private GameObject overlay;
+        private Button modsTabButton;
+        private Button settingsTabButton;
         private RectTransform content;
         private TMP_Text fontTemplate;
         private bool installRequested;
@@ -71,6 +75,20 @@ namespace ModsPanel
             {
                 rebuildRequested = false;
                 RebuildControls();
+            }
+
+            if (modsTab != null && modsTab.gameObject.activeInHierarchy)
+            {
+                if (Input.GetKeyDown(KeyCode.JoystickButton5))
+                {
+                    OpenPanel();
+                    if (settingsTabButton != null && overlay != null && !overlay.activeSelf)
+                        EventSystem.current?.SetSelectedGameObject(settingsTabButton.gameObject);
+                }
+                else if (Input.GetKeyDown(KeyCode.JoystickButton4))
+                {
+                    ClosePanel();
+                }
             }
         }
 
@@ -145,6 +163,7 @@ namespace ModsPanel
             tabs.gameObject.AddComponent<GraphicRaycaster>();
 
             Button modsButton = CreateButton("Mods Tab", tabs, "Mods", ClosePanel);
+            modsTabButton = modsButton;
             RectTransform modsRect = (RectTransform)modsButton.transform;
             modsRect.anchorMin = new Vector2(0f, 0.5f);
             modsRect.anchorMax = new Vector2(0f, 0.5f);
@@ -157,12 +176,22 @@ namespace ModsPanel
                 tabs,
                 "Mod Settings",
                 OpenPanel);
+            settingsTabButton = settingsButton;
             RectTransform settingsRect = (RectTransform)settingsButton.transform;
             settingsRect.anchorMin = new Vector2(0f, 0.5f);
             settingsRect.anchorMax = new Vector2(0f, 0.5f);
             settingsRect.pivot = new Vector2(0f, 0.5f);
             settingsRect.anchoredPosition = new Vector2(239f, 0f);
             settingsRect.sizeDelta = new Vector2(230f, 42f);
+
+            Navigation modsNavigation = modsButton.navigation;
+            modsNavigation.mode = Navigation.Mode.Explicit;
+            modsNavigation.selectOnRight = settingsButton;
+            modsButton.navigation = modsNavigation;
+            Navigation settingsNavigation = settingsButton.navigation;
+            settingsNavigation.mode = Navigation.Mode.Explicit;
+            settingsNavigation.selectOnLeft = modsButton;
+            settingsButton.navigation = settingsNavigation;
         }
 
         private void BuildScrollArea(RectTransform parent)
@@ -252,6 +281,7 @@ namespace ModsPanel
             overlay.transform.SetAsLastSibling();
             RebuildControls();
             Canvas.ForceUpdateCanvases();
+            FocusFirstSetting();
         }
 
         private void ClosePanel()
@@ -265,6 +295,16 @@ namespace ModsPanel
                     state.Key.SetActive(state.Value);
             }
             nativeChildStates.Clear();
+            if (modsTabButton != null && EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(modsTabButton.gameObject);
+        }
+
+        private void FocusFirstSetting()
+        {
+            if (content == null || EventSystem.current == null) return;
+            Selectable first = content.GetComponentsInChildren<Selectable>(false)
+                .FirstOrDefault(item => item != null && item.IsInteractable());
+            if (first != null) EventSystem.current.SetSelectedGameObject(first.gameObject);
         }
 
         private void RebuildControls()
@@ -743,7 +783,9 @@ namespace ModsPanel
             ColorBlock colors = button.colors;
             colors.normalColor = Color.white;
             colors.highlightedColor = new Color(1.1f, 1.1f, 1.1f, 1f);
+            colors.selectedColor = new Color(0.55f, 1.35f, 1.35f, 1f);
             colors.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+            colors.colorMultiplier = 1.25f;
             button.colors = colors;
             button.onClick.AddListener(new UnityAction(pressed));
 
