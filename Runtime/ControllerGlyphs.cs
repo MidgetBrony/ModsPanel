@@ -16,8 +16,11 @@ namespace ModsPanel
             BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
 
+        internal static bool HasConnectedGamepad => Gamepad.current != null && Gamepad.current.added;
+
         internal static Sprite ForAction(string actionName)
         {
+            if (!HasConnectedGamepad) return null;
             if (!Singleton<InputManager>.HasInstance()) return null;
             PlayerInput input = PlayerInputField?.GetValue(Singleton<InputManager>.Instance) as PlayerInput;
             InputAction action = input?.actions?.FindAction(actionName);
@@ -33,6 +36,7 @@ namespace ModsPanel
 
         internal static Sprite ForPath(string path)
         {
+            if (!HasConnectedGamepad) return null;
             string control = path?.Split('/').LastOrDefault()?.ToLowerInvariant();
             if (path?.IndexOf("/dpad/", StringComparison.OrdinalIgnoreCase) >= 0)
                 control = "dpad" + control;

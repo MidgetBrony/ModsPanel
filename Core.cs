@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(ModsPanel.Core), "ModsPanel", "2.3.1", "Rusty", null)]
+[assembly: MelonInfo(typeof(ModsPanel.Core), "ModsPanel", "2.4.2", "Rusty", null)]
 [assembly: MelonGame("NestedLoop", "BOXROOM")]
 
 namespace ModsPanel

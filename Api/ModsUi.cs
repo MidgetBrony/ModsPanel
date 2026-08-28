@@ -79,6 +79,14 @@ namespace ModsPanel
             return this;
         }
 
+        /// <summary>Adds a non-interactive image preview to the menu.</summary>
+        public ModMenu AddImage(Func<Texture> getTexture, float preferredHeight = 430f)
+        {
+            items.Add(new ModMenuImage(getTexture, preferredHeight));
+            RefreshIfOpen();
+            return this;
+        }
+
         public ModMenu AddToggle(string text, Func<bool> getValue, Action<bool> setValue)
         {
             items.Add(new ModMenuToggle(text, getValue, setValue));
@@ -137,6 +145,18 @@ namespace ModsPanel
         internal string Text { get; }
         internal string Detail { get; }
         internal Action Pressed { get; }
+    }
+
+    internal sealed class ModMenuImage : ModMenuItem
+    {
+        internal ModMenuImage(Func<Texture> getTexture, float preferredHeight)
+        {
+            GetTexture = getTexture ?? (() => null);
+            PreferredHeight = Math.Max(80f, preferredHeight);
+        }
+
+        internal Func<Texture> GetTexture { get; }
+        internal float PreferredHeight { get; }
     }
 
     internal sealed class ModMenuToggle : ModMenuItem

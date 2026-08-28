@@ -208,6 +208,8 @@ namespace ModsPanel
 
         private void BuildControllerLegend(RectTransform parent)
         {
+            if (!ControllerGlyphs.HasConnectedGamepad) return;
+
             RectTransform legend = CreateRect("Controller Legend", parent);
             legend.anchorMin = new Vector2(0f, 0f);
             legend.anchorMax = new Vector2(1f, 0f);
@@ -603,10 +605,10 @@ namespace ModsPanel
         private void BuildTextControl(RectTransform parent, TextControl control)
         {
             RectTransform row = CreateRow(parent, control.Id, 92f);
-            BuildRowLabel(row, control.Label, 0.38f);
+            BuildRowLabel(row, control.Label, 0.48f);
             TMP_InputField input = CreateInputField(row, SafeInvoke(control.GetValue, string.Empty),
                 control.Placeholder, TMP_InputField.ContentType.Standard);
-            PlaceTop((RectTransform)input.transform, 0.4f, 1f, 12f, 58f, 8f, 18f);
+            PlaceTop((RectTransform)input.transform, 0.5f, 1f, 12f, 58f, 8f, 18f);
             input.onEndEdit.AddListener(new UnityAction<string>(value => SafeInvoke(() => control.SetValue(value))));
         }
 

@@ -293,6 +293,22 @@ namespace ModsPanel
                 }
                 return button;
             }
+            if (item is ModMenuImage preview)
+            {
+                RectTransform row = LayoutRow("Image Preview", preview.PreferredHeight);
+                RectTransform imageRect = Rect("Preview Image", row);
+                Stretch(imageRect, 0f, 0f, 0f, 0f);
+                RawImage image = imageRect.gameObject.AddComponent<RawImage>();
+                image.texture = SafeValue(preview.GetTexture, null);
+                image.color = Color.white;
+                image.raycastTarget = false;
+                AspectRatioFitter ratio = imageRect.gameObject.AddComponent<AspectRatioFitter>();
+                ratio.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+                ratio.aspectRatio = image.texture != null && image.texture.height > 0
+                    ? (float)image.texture.width / image.texture.height
+                    : 2f / 3f;
+                return null;
+            }
             if (item is ModMenuToggle option)
             {
                 RectTransform row = LayoutRow("Toggle", 82f);
