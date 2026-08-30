@@ -94,6 +94,26 @@ namespace ModsPanel
             return this;
         }
 
+        /// <summary>Adds a controller-friendly slider to a temporary gameplay menu.</summary>
+        public ModMenu AddSlider(string text, Func<float> getValue, Action<float> setValue,
+            float minimum, float maximum, bool wholeNumbers = false,
+            Func<float, string> formatValue = null)
+        {
+            items.Add(new ModMenuSlider(text, getValue, setValue, minimum, maximum,
+                wholeNumbers, formatValue));
+            RefreshIfOpen();
+            return this;
+        }
+
+        /// <summary>Adds a dropdown backed by a selected option index.</summary>
+        public ModMenu AddDropdown(string text, Func<IReadOnlyList<string>> getOptions,
+            Func<int> getSelectedIndex, Action<int> setSelectedIndex)
+        {
+            items.Add(new ModMenuDropdown(text, getOptions, getSelectedIndex, setSelectedIndex));
+            RefreshIfOpen();
+            return this;
+        }
+
         public ModMenu AddTextInput(string label, Func<string> getValue,
             Action<string> setValue, string placeholder = "")
         {
@@ -171,6 +191,45 @@ namespace ModsPanel
         internal string Text { get; }
         internal Func<bool> GetValue { get; }
         internal Action<bool> SetValue { get; }
+    }
+
+    internal sealed class ModMenuSlider : ModMenuItem
+    {
+        internal ModMenuSlider(string text, Func<float> getValue, Action<float> setValue,
+            float minimum, float maximum, bool wholeNumbers, Func<float, string> formatValue)
+        {
+            Text = text ?? string.Empty;
+            GetValue = getValue ?? (() => minimum);
+            SetValue = setValue ?? (_ => { });
+            Minimum = minimum;
+            Maximum = Math.Max(minimum, maximum);
+            WholeNumbers = wholeNumbers;
+            FormatValue = formatValue ?? (value => value.ToString(wholeNumbers ? "0" : "0.##"));
+        }
+
+        internal string Text { get; }
+        internal Func<float> GetValue { get; }
+        internal Action<float> SetValue { get; }
+        internal float Minimum { get; }
+        internal float Maximum { get; }
+        internal bool WholeNumbers { get; }
+        internal Func<float, string> FormatValue { get; }
+    }
+
+    internal sealed class ModMenuDropdown : ModMenuItem
+    {
+        internal ModMenuDropdown(string text, Func<IReadOnlyList<string>> getOptions,
+            Func<int> getSelectedIndex, Action<int> setSelectedIndex)
+        {
+            Text = text ?? string.Empty;
+            GetOptions = getOptions ?? (() => Array.Empty<string>());
+            GetSelectedIndex = getSelectedIndex ?? (() => 0);
+            SetSelectedIndex = setSelectedIndex ?? (_ => { });
+        }
+        internal string Text { get; }
+        internal Func<IReadOnlyList<string>> GetOptions { get; }
+        internal Func<int> GetSelectedIndex { get; }
+        internal Action<int> SetSelectedIndex { get; }
     }
 
     internal sealed class ModMenuSpacer : ModMenuItem

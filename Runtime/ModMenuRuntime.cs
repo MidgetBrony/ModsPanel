@@ -1,5 +1,6 @@
 using MelonLoader;
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -30,6 +31,7 @@ namespace ModsPanel
         private ScrollRect activeScroll;
         private RectTransform activeViewport;
         private GameObject lastSelected;
+        private readonly List<LiveSlider> liveSliders = new List<LiveSlider>();
 
         internal static ModMenuRuntime Instance { get; private set; }
         internal static bool HasOpenMenu => Instance != null && Instance.openMenu != null;
@@ -71,6 +73,7 @@ namespace ModsPanel
             if (root != null) Destroy(root);
             root = null;
             content = null;
+            liveSliders.Clear();
             Cursor.lockState = previousLockMode;
             Cursor.visible = previousCursorVisible;
             if (Singleton<InputManager>.HasInstance())
@@ -130,11 +133,23 @@ namespace ModsPanel
                     KeepVisible(selected.GetComponent<RectTransform>());
                 }
             }
+
+
+            foreach (LiveSlider binding in liveSliders)
+            {
+                if (binding.Slider == null || binding.Value == null) continue;
+                if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == binding.Slider.gameObject) continue;
+                float current = Mathf.Clamp(SafeValue(binding.Item.GetValue, binding.Item.Minimum),
+                    binding.Item.Minimum, binding.Item.Maximum);
+                binding.Slider.SetValueWithoutNotify(current);
+                binding.Value.text = SafeValue(() => binding.Item.FormatValue(current), current.ToString("0.##"));
+            }
         }
 
         private void Build(ModMenu menu)
         {
             if (root != null) Destroy(root);
+            liveSliders.Clear();
             font = FindFont();
 
             root = new GameObject($"ModsPanel Menu {menu.OwnerId}", typeof(RectTransform));
@@ -337,6 +352,84 @@ namespace ModsPanel
                 toggle.onValueChanged.AddListener(new UnityAction<bool>(value => SafeInvoke(() => option.SetValue(value))));
                 return toggle;
             }
+            if (item is ModMenuSlider sliderItem)
+            {
+                RectTransform row = LayoutRow("Slider", 112f);
+                TMP_Text sliderLabel = TextFill(row, sliderItem.Text, 31f, Ink);
+                sliderLabel.rectTransform.anchorMin = new Vector2(0f, 0.56f);
+                sliderLabel.rectTransform.offsetMin = new Vector2(18f, 0f);
+                sliderLabel.rectTransform.offsetMax = new Vector2(-170f, -4f);
+                sliderLabel.alignment = TextAlignmentOptions.MidlineLeft;
+
+                TMP_Text value = TextFill(row, string.Empty, 27f, Ink);
+                value.rectTransform.anchorMin = new Vector2(0.78f, 0.56f);
+                value.rectTransform.offsetMin = new Vector2(0f, 0f);
+                value.rectTransform.offsetMax = new Vector2(-18f, -4f);
+                value.alignment = TextAlignmentOptions.MidlineRight;
+
+                RectTransform sliderRect = Rect("Slider Control", row);
+                sliderRect.anchorMin = new Vector2(0f, 0f);
+                sliderRect.anchorMax = new Vector2(1f, 0.5f);
+                sliderRect.offsetMin = new Vector2(18f, 12f);
+                sliderRect.offsetMax = new Vector2(-18f, -8f);
+                Image background = sliderRect.gameObject.AddComponent<Image>();
+                background.color = DeepBlue;
+                RectTransform fillArea = Rect("Fill Area", sliderRect);
+                Stretch(fillArea, 4f, 4f, 4f, 4f);
+                RectTransform fill = Rect("Fill", fillArea);
+                Stretch(fill, 0f, 0f, 0f, 0f);
+                fill.gameObject.AddComponent<Image>().color = Blue;
+                RectTransform handleArea = Rect("Handle Slide Area", sliderRect);
+                Stretch(handleArea, 12f, 12f, -7f, -7f);
+                RectTransform handle = Rect("Handle", handleArea);
+                handle.sizeDelta = new Vector2(28f, 54f);
+                handle.gameObject.AddComponent<Image>().color = Paper;
+                Slider slider = sliderRect.gameObject.AddComponent<Slider>();
+                slider.fillRect = fill;
+                slider.handleRect = handle;
+                slider.targetGraphic = handle.GetComponent<Image>();
+                slider.direction = Slider.Direction.LeftToRight;
+                slider.minValue = sliderItem.Minimum;
+                slider.maxValue = sliderItem.Maximum;
+                slider.wholeNumbers = sliderItem.WholeNumbers;
+                slider.value = Mathf.Clamp(SafeValue(sliderItem.GetValue, sliderItem.Minimum),
+                    sliderItem.Minimum, sliderItem.Maximum);
+                value.text = SafeValue(() => sliderItem.FormatValue(slider.value), slider.value.ToString("0.##"));
+                slider.onValueChanged.AddListener(new UnityAction<float>(newValue =>
+                {
+                    value.text = SafeValue(() => sliderItem.FormatValue(newValue), newValue.ToString("0.##"));
+                    SafeInvoke(() => sliderItem.SetValue(newValue));
+                }));
+                slider.gameObject.AddComponent<ControllerSelectionVisual>();
+                liveSliders.Add(new LiveSlider(sliderItem, slider, value));
+                return slider;
+            }
+            if (item is ModMenuDropdown dropdownItem)
+            {
+                RectTransform row = LayoutRow("Dropdown", 112f);
+                TMP_Text dropdownLabel = TextFill(row, dropdownItem.Text, 31f, Ink);
+                dropdownLabel.rectTransform.anchorMin = new Vector2(0f, 0.56f);
+                dropdownLabel.rectTransform.offsetMin = new Vector2(18f, 0f);
+                dropdownLabel.rectTransform.offsetMax = new Vector2(-18f, -4f);
+                dropdownLabel.alignment = TextAlignmentOptions.MidlineLeft;
+
+                RectTransform dropdownRect = Rect("Dropdown Control", row);
+                dropdownRect.anchorMin = new Vector2(0f, 0f);
+                dropdownRect.anchorMax = new Vector2(1f, 0.5f);
+                dropdownRect.offsetMin = new Vector2(18f, 6f);
+                dropdownRect.offsetMax = new Vector2(-18f, -4f);
+                TMP_Dropdown dropdown = BuildMenuDropdown(dropdownRect);
+                IReadOnlyList<string> options = SafeValue(dropdownItem.GetOptions, Array.Empty<string>());
+                dropdown.ClearOptions();
+                dropdown.AddOptions(new List<string>(options ?? Array.Empty<string>()));
+                dropdown.value = Mathf.Clamp(SafeValue(dropdownItem.GetSelectedIndex, 0), 0,
+                    Math.Max(0, dropdown.options.Count - 1));
+                dropdown.RefreshShownValue();
+                dropdown.onValueChanged.AddListener(new UnityAction<int>(index =>
+                    SafeInvoke(() => dropdownItem.SetSelectedIndex(index))));
+                dropdown.gameObject.AddComponent<ControllerSelectionVisual>();
+                return dropdown;
+            }
             if (item is ModMenuTextInput textInput)
             {
                 RectTransform row = LayoutRow("Text Input", 154f);
@@ -426,6 +519,66 @@ namespace ModsPanel
             return text;
         }
 
+        private TMP_Dropdown BuildMenuDropdown(RectTransform root)
+        {
+            Image image = root.gameObject.AddComponent<Image>();
+            image.color = Blue;
+            image.sprite = FindSprite("SquareRounded_Filled");
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 3.5f;
+            TMP_Text caption = TextFill(root, string.Empty, 27f, Paper);
+            Stretch(caption.rectTransform, 14f, 42f, 2f, 2f);
+            caption.alignment = TextAlignmentOptions.MidlineLeft;
+            TMP_Text arrow = TextFill(root, "▼", 21f, Paper);
+            arrow.rectTransform.anchorMin = new Vector2(1f, 0f);
+            arrow.rectTransform.anchorMax = Vector2.one;
+            arrow.rectTransform.offsetMin = new Vector2(-40f, 0f);
+            arrow.rectTransform.offsetMax = Vector2.zero;
+            arrow.alignment = TextAlignmentOptions.Center;
+
+            RectTransform template = Rect("Template", root);
+            template.anchorMin = new Vector2(0f, 0f);
+            template.anchorMax = new Vector2(1f, 0f);
+            template.pivot = new Vector2(0.5f, 1f);
+            template.anchoredPosition = Vector2.zero;
+            template.sizeDelta = new Vector2(0f, 260f);
+            template.gameObject.AddComponent<Image>().color = Paper;
+            ScrollRect scroll = template.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            RectTransform viewport = Rect("Viewport", template);
+            Stretch(viewport, 0f, 0f, 0f, 0f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            RectTransform optionContent = Rect("Content", viewport);
+            optionContent.anchorMin = new Vector2(0f, 1f);
+            optionContent.anchorMax = new Vector2(1f, 1f);
+            optionContent.pivot = new Vector2(0.5f, 1f);
+            optionContent.sizeDelta = new Vector2(0f, 52f);
+            RectTransform item = Rect("Item", optionContent);
+            item.anchorMin = new Vector2(0f, 1f);
+            item.anchorMax = new Vector2(1f, 1f);
+            item.pivot = new Vector2(0.5f, 1f);
+            item.sizeDelta = new Vector2(0f, 52f);
+            Image itemImage = item.gameObject.AddComponent<Image>();
+            itemImage.color = Paper;
+            Toggle toggle = item.gameObject.AddComponent<Toggle>();
+            toggle.targetGraphic = itemImage;
+            TMP_Text itemLabel = TextFill(item, "Option", 25f, Ink);
+            Stretch(itemLabel.rectTransform, 12f, 12f, 2f, 2f);
+            itemLabel.alignment = TextAlignmentOptions.MidlineLeft;
+            scroll.viewport = viewport;
+            scroll.content = optionContent;
+
+            TMP_Dropdown dropdown = root.gameObject.AddComponent<TMP_Dropdown>();
+            dropdown.targetGraphic = image;
+            dropdown.template = template;
+            dropdown.captionText = caption;
+            dropdown.itemText = itemLabel;
+            template.gameObject.SetActive(false);
+            return dropdown;
+        }
+
         private TMP_Text Text(Transform parent, string value, float size, Color color,
             Vector2 position, Vector2 dimensions, TextAlignmentOptions alignment, bool wrap = false)
         {
@@ -497,6 +650,19 @@ namespace ModsPanel
                 MelonLogger.Error($"ModsPanel menu callback failed: {exception}");
                 return fallback;
             }
+        }
+
+        private sealed class LiveSlider
+        {
+            internal LiveSlider(ModMenuSlider item, Slider slider, TMP_Text value)
+            {
+                Item = item;
+                Slider = slider;
+                Value = value;
+            }
+            internal ModMenuSlider Item { get; }
+            internal Slider Slider { get; }
+            internal TMP_Text Value { get; }
         }
     }
 }
