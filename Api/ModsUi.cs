@@ -49,6 +49,7 @@ namespace ModsPanel
         public string Eyebrow { get; set; } = "MOD MENU";
         public string CloseText { get; set; } = "CLOSE";
         public Action Closed { get; set; }
+        public bool IsOpen => ModMenuRuntime.IsOpen(this);
         internal IReadOnlyList<ModMenuItem> Items => items;
 
         public ModMenu Clear()

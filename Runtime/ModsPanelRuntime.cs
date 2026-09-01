@@ -799,7 +799,7 @@ namespace ModsPanel
             scroll.viewport = viewport;
             scroll.content = contentRoot;
 
-            TMP_Dropdown dropdown = root.gameObject.AddComponent<TMP_Dropdown>();
+            TMP_Dropdown dropdown = root.gameObject.AddComponent<OverlayDropdown>();
             dropdown.targetGraphic = root.GetComponent<Image>();
             dropdown.template = template;
             dropdown.captionText = caption;

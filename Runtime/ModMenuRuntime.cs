@@ -8,6 +8,7 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using SteamShelf;
 using SteamShelf.Input;
+using SteamShelf.UI;
 
 namespace ModsPanel
 {
@@ -56,6 +57,7 @@ namespace ModsPanel
             {
                 previousLockMode = Cursor.lockState;
                 previousCursorVisible = Cursor.visible;
+                Menu.MenuCursorStateChanged?.Invoke(true);
             }
 
             Cursor.lockState = CursorLockMode.None;
@@ -76,6 +78,7 @@ namespace ModsPanel
             liveSliders.Clear();
             Cursor.lockState = previousLockMode;
             Cursor.visible = previousCursorVisible;
+            Menu.MenuCursorStateChanged?.Invoke(false);
             if (Singleton<InputManager>.HasInstance())
                 Singleton<InputManager>.Instance.SwapToInputMap(EInputMap.Player);
             SafeInvoke(closing.Closed);
@@ -138,7 +141,6 @@ namespace ModsPanel
             foreach (LiveSlider binding in liveSliders)
             {
                 if (binding.Slider == null || binding.Value == null) continue;
-                if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == binding.Slider.gameObject) continue;
                 float current = Mathf.Clamp(SafeValue(binding.Item.GetValue, binding.Item.Minimum),
                     binding.Item.Minimum, binding.Item.Maximum);
                 binding.Slider.SetValueWithoutNotify(current);
@@ -570,7 +572,7 @@ namespace ModsPanel
             scroll.viewport = viewport;
             scroll.content = optionContent;
 
-            TMP_Dropdown dropdown = root.gameObject.AddComponent<TMP_Dropdown>();
+            TMP_Dropdown dropdown = root.gameObject.AddComponent<OverlayDropdown>();
             dropdown.targetGraphic = image;
             dropdown.template = template;
             dropdown.captionText = caption;
