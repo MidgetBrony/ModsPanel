@@ -48,6 +48,12 @@ namespace ModsPanel
         public string Subtitle { get; set; }
         public string Eyebrow { get; set; } = "MOD MENU";
         public string CloseText { get; set; } = "CLOSE";
+        /// <summary>
+        /// Presents the first image as a large centered object with compact action
+        /// buttons underneath. Input ownership, cursor handling, controller focus,
+        /// and close behavior remain managed by ModsUi.
+        /// </summary>
+        public bool FocusViewer { get; set; }
         public Action Closed { get; set; }
         public bool IsOpen => ModMenuRuntime.IsOpen(this);
         internal IReadOnlyList<ModMenuItem> Items => items;
@@ -83,7 +89,15 @@ namespace ModsPanel
         /// <summary>Adds a non-interactive image preview to the menu.</summary>
         public ModMenu AddImage(Func<Texture> getTexture, float preferredHeight = 430f)
         {
-            items.Add(new ModMenuImage(getTexture, preferredHeight));
+            items.Add(new ModMenuImage(getTexture, preferredHeight, null));
+            RefreshIfOpen();
+            return this;
+        }
+
+        /// <summary>Adds an image that reports normalized click coordinates from bottom-left.</summary>
+        public ModMenu AddImage(Func<Texture> getTexture, Action<Vector2> clicked, float preferredHeight = 430f)
+        {
+            items.Add(new ModMenuImage(getTexture, preferredHeight, clicked));
             RefreshIfOpen();
             return this;
         }
@@ -170,14 +184,16 @@ namespace ModsPanel
 
     internal sealed class ModMenuImage : ModMenuItem
     {
-        internal ModMenuImage(Func<Texture> getTexture, float preferredHeight)
+        internal ModMenuImage(Func<Texture> getTexture, float preferredHeight, Action<Vector2> clicked)
         {
             GetTexture = getTexture ?? (() => null);
             PreferredHeight = Math.Max(80f, preferredHeight);
+            Clicked = clicked;
         }
 
         internal Func<Texture> GetTexture { get; }
         internal float PreferredHeight { get; }
+        internal Action<Vector2> Clicked { get; }
     }
 
     internal sealed class ModMenuToggle : ModMenuItem

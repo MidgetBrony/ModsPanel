@@ -12,6 +12,7 @@
   "release": {
     "provider": "github",
     "asset": "ModsPanel.*.zip",
+    "checksumAsset": "SHA256SUMS.txt",
     "destination": "Mods"
   }
 }

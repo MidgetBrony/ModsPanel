@@ -171,6 +171,12 @@ namespace ModsPanel
             backdrop.texture = FindTexture("PauseMenuBackgroundPattern");
             backdrop.color = new Color(0.035f, 0.075f, 0.08f, 0.92f);
 
+            if (menu.FocusViewer)
+            {
+                BuildFocusViewer(menu);
+                return;
+            }
+
             RectTransform panel = Rect("Panel", root.transform);
             panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0.5f);
             panel.sizeDelta = new Vector2(1380f, 870f);
@@ -257,6 +263,68 @@ namespace ModsPanel
 
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+            if (first != null && EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(first.gameObject);
+        }
+
+        private void BuildFocusViewer(ModMenu menu)
+        {
+            activeScroll = null;
+            activeViewport = null;
+            content = null;
+
+            RectTransform stage = Rect("Focus Viewer", root.transform);
+            stage.anchorMin = stage.anchorMax = new Vector2(.5f, .5f);
+            stage.sizeDelta = new Vector2(1160f, 1010f);
+
+            ModMenuImage preview = null;
+            foreach (ModMenuItem item in menu.Items)
+                if (item is ModMenuImage imageItem) { preview = imageItem; break; }
+
+            RectTransform imageFrame = Rect("Viewed Object", stage);
+            imageFrame.anchorMin = new Vector2(.5f, 0f);
+            imageFrame.anchorMax = new Vector2(.5f, 1f);
+            imageFrame.pivot = new Vector2(.5f, .5f);
+            imageFrame.anchoredPosition = Vector2.zero;
+            imageFrame.sizeDelta = new Vector2(780f, -20f);
+            RawImage viewed = imageFrame.gameObject.AddComponent<RawImage>();
+            viewed.texture = preview != null ? SafeValue(preview.GetTexture, null) : null;
+            viewed.color = Color.white;
+            viewed.raycastTarget = preview != null && preview.Clicked != null;
+            if (preview != null && preview.Clicked != null)
+            {
+                ImageClickHandler click = imageFrame.gameObject.AddComponent<ImageClickHandler>();
+                click.Target = imageFrame;
+                click.Clicked = preview.Clicked;
+            }
+            AspectRatioFitter aspect = imageFrame.gameObject.AddComponent<AspectRatioFitter>();
+            aspect.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            aspect.aspectRatio = viewed.texture != null && viewed.texture.height > 0
+                ? (float)viewed.texture.width / viewed.texture.height : .72f;
+
+            Selectable first = null;
+            int actionIndex = 0;
+            foreach (ModMenuItem item in menu.Items)
+            {
+                if (!(item is ModMenuButton action)) continue;
+                Button button = Button("Viewer Arrow", stage, action.Text, Blue, () => SafeInvoke(action.Pressed));
+                RectTransform buttonRect = (RectTransform)button.transform;
+                buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(.5f, .5f);
+                buttonRect.pivot = new Vector2(.5f, .5f);
+                buttonRect.anchoredPosition = new Vector2(actionIndex == 0 ? -500f : 500f, 0f);
+                buttonRect.sizeDelta = new Vector2(92f, 118f);
+                if (first == null) first = button;
+                actionIndex++;
+                if (actionIndex >= 2) break;
+            }
+
+            Button close = Button("Close Viewer", stage, "X", Red, () => CloseMenu(menu));
+            RectTransform closeRect = (RectTransform)close.transform;
+            closeRect.anchorMin = closeRect.anchorMax = new Vector2(1f, 1f);
+            closeRect.pivot = new Vector2(1f, 1f);
+            closeRect.anchoredPosition = new Vector2(-10f, -10f);
+            closeRect.sizeDelta = new Vector2(72f, 72f);
+
             if (first != null && EventSystem.current != null)
                 EventSystem.current.SetSelectedGameObject(first.gameObject);
         }
@@ -665,6 +733,26 @@ namespace ModsPanel
             internal ModMenuSlider Item { get; }
             internal Slider Slider { get; }
             internal TMP_Text Value { get; }
+        }
+    }
+
+    internal sealed class ImageClickHandler : MonoBehaviour, IPointerClickHandler
+    {
+        internal RectTransform Target;
+        internal Action<Vector2> Clicked;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (Target == null || Clicked == null) return;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                Target, eventData.position, eventData.pressEventCamera, out Vector2 local)) return;
+            Rect rect = Target.rect;
+            if (rect.width <= 0f || rect.height <= 0f) return;
+            Vector2 normalized = new Vector2(
+                Mathf.Clamp01((local.x - rect.xMin) / rect.width),
+                Mathf.Clamp01((local.y - rect.yMin) / rect.height));
+            try { Clicked(normalized); }
+            catch (Exception exception) { MelonLogger.Error($"ModsUi image click failed: {exception}"); }
         }
     }
 }

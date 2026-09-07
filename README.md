@@ -126,9 +126,10 @@ private static void OpenRoomPicker()
 }
 ```
 
-General menus support headings, wrapped labels, non-interactive texture previews
-through `AddImage`, action buttons with optional detail text, toggles, spacers,
-custom eyebrow/title/subtitle/close text, an
+General menus support headings, wrapped labels, texture previews through
+`AddImage`, optional normalized click coordinates for interactive previews,
+action buttons with optional detail text, toggles, spacers, a focused image
+viewer layout, custom eyebrow/title/subtitle/close text, an
 `Closed` callback, explicit `Close()`, and global `ModsUi.CloseMenu()` /
 `ModsUi.IsMenuOpen` access. Use `ModsUi.ShowToast(message)` for transient
 feedback that does not interrupt gameplay.
