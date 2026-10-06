@@ -29,6 +29,7 @@ namespace ModsPanel
         private ModMenu openMenu;
         private CursorLockMode previousLockMode;
         private bool previousCursorVisible;
+        private EInputMap previousInputMap = EInputMap.Player;
         private ScrollRect activeScroll;
         private RectTransform activeViewport;
         private GameObject lastSelected;
@@ -57,6 +58,7 @@ namespace ModsPanel
             {
                 previousLockMode = Cursor.lockState;
                 previousCursorVisible = Cursor.visible;
+                previousInputMap = ControllerGlyphs.CurrentInputMap;
                 Menu.MenuCursorStateChanged?.Invoke(true);
             }
 
@@ -78,9 +80,9 @@ namespace ModsPanel
             liveSliders.Clear();
             Cursor.lockState = previousLockMode;
             Cursor.visible = previousCursorVisible;
-            Menu.MenuCursorStateChanged?.Invoke(false);
+            Menu.MenuCursorStateChanged?.Invoke(previousInputMap == EInputMap.UI);
             if (Singleton<InputManager>.HasInstance())
-                Singleton<InputManager>.Instance.SwapToInputMap(EInputMap.Player);
+                Singleton<InputManager>.Instance.SwapToInputMap(previousInputMap);
             SafeInvoke(closing.Closed);
         }
 

@@ -18,6 +18,17 @@ namespace ModsPanel
 
         internal static bool HasConnectedGamepad => Gamepad.current != null && Gamepad.current.added;
 
+        internal static EInputMap CurrentInputMap
+        {
+            get
+            {
+                if (!Singleton<InputManager>.HasInstance()) return EInputMap.Player;
+                PlayerInput input = PlayerInputField?.GetValue(Singleton<InputManager>.Instance) as PlayerInput;
+                string mapName = input?.currentActionMap?.name;
+                return Enum.TryParse(mapName, true, out EInputMap map) ? map : EInputMap.Player;
+            }
+        }
+
         internal static Sprite ForAction(string actionName)
         {
             if (!HasConnectedGamepad) return null;
