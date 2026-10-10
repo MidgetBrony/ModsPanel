@@ -54,6 +54,13 @@ namespace ModsPanel
         /// and close behavior remain managed by ModsUi.
         /// </summary>
         public bool FocusViewer { get; set; }
+        /// <summary>
+        /// Presents the menu as a compact floating panel without the full-screen
+        /// backdrop. Useful for live editors where the game object must stay visible.
+        /// </summary>
+        public bool CompactWindow { get; set; }
+        /// <summary>Allows a compact window to be repositioned by dragging its title bar.</summary>
+        public bool Draggable { get; set; }
         public Action Closed { get; set; }
         public bool IsOpen => ModMenuRuntime.IsOpen(this);
         internal IReadOnlyList<ModMenuItem> Items => items;

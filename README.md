@@ -134,6 +134,11 @@ viewer layout, custom eyebrow/title/subtitle/close text, an
 `ModsUi.IsMenuOpen` access. Use `ModsUi.ShowToast(message)` for transient
 feedback that does not interrupt gameplay.
 
+For live editors that should leave the game object visible, set
+`ModMenu.CompactWindow = true`. Set `ModMenu.Draggable = true` to let the user
+reposition that compact panel by dragging its title bar. These options are
+opt-in and do not change existing full-screen or focus-viewer menus.
+
 ## Build
 
 Copy `Directory.Build.user.props.example` to `Directory.Build.user.props` and

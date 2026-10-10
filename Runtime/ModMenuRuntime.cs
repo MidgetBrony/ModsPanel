@@ -168,6 +168,12 @@ namespace ModsPanel
             scaler.matchWidthOrHeight = 0.5f;
             root.AddComponent<GraphicRaycaster>();
 
+            if (menu.CompactWindow)
+            {
+                BuildCompactWindow(menu);
+                return;
+            }
+
             RawImage backdrop = Rect("Background", root.transform).gameObject.AddComponent<RawImage>();
             Stretch(backdrop.rectTransform, 0f, 0f, 0f, 0f);
             backdrop.texture = FindTexture("PauseMenuBackgroundPattern");
@@ -255,6 +261,113 @@ namespace ModsPanel
             scroll.verticalScrollbar = scrollbar;
             scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             scroll.verticalScrollbarSpacing = -14f;
+
+            Selectable first = null;
+            foreach (ModMenuItem item in menu.Items)
+            {
+                Selectable selectable = BuildItem(item);
+                if (first == null && selectable != null) first = selectable;
+            }
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+            if (first != null && EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(first.gameObject);
+        }
+
+        private void BuildCompactWindow(ModMenu menu)
+        {
+            RectTransform panel = Rect("Compact Panel", root.transform);
+            panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0.5f);
+            panel.pivot = new Vector2(0.5f, 0.5f);
+            panel.sizeDelta = new Vector2(760f, 760f);
+            Image panelImage = panel.gameObject.AddComponent<Image>();
+            panelImage.color = Paper;
+            panelImage.sprite = FindSprite("SquareRounded_Filled");
+            panelImage.type = Image.Type.Sliced;
+            panelImage.pixelsPerUnitMultiplier = 3f;
+
+            RectTransform header = Rect("Drag Header", panel);
+            header.anchorMin = new Vector2(0f, 1f);
+            header.anchorMax = Vector2.one;
+            header.pivot = new Vector2(0.5f, 1f);
+            header.sizeDelta = new Vector2(0f, 112f);
+            header.anchoredPosition = Vector2.zero;
+            Image headerImage = header.gameObject.AddComponent<Image>();
+            headerImage.color = DeepBlue;
+            headerImage.sprite = FindSprite("SquareRounded_Filled");
+            headerImage.type = Image.Type.Sliced;
+            headerImage.pixelsPerUnitMultiplier = 3f;
+
+            if (menu.Draggable)
+            {
+                WindowDragHandle drag = header.gameObject.AddComponent<WindowDragHandle>();
+                drag.Target = panel;
+                drag.Canvas = root.GetComponent<Canvas>();
+            }
+
+            TMP_Text title = TextFill(header, menu.Title.ToUpperInvariant(), 38f, Paper, true);
+            title.rectTransform.offsetMin = new Vector2(30f, 12f);
+            title.rectTransform.offsetMax = new Vector2(-100f, -10f);
+            title.alignment = TextAlignmentOptions.MidlineLeft;
+
+            Button close = Button("Close Compact", header, "X", Red, () => CloseMenu(menu));
+            RectTransform closeRect = (RectTransform)close.transform;
+            closeRect.anchorMin = closeRect.anchorMax = new Vector2(1f, 0.5f);
+            closeRect.pivot = new Vector2(1f, 0.5f);
+            closeRect.anchoredPosition = new Vector2(-22f, 0f);
+            closeRect.sizeDelta = new Vector2(68f, 68f);
+
+            RectTransform scrollRoot = Rect("Compact Scroll", panel);
+            Stretch(scrollRoot, 34f, 34f, 136f, 30f);
+            ScrollRect scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.inertia = true;
+            scroll.decelerationRate = 0.12f;
+            scroll.scrollSensitivity = 60f;
+
+            RectTransform viewport = Rect("Viewport", scrollRoot);
+            Stretch(viewport, 0f, 18f, 0f, 0f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            content = Rect("Content", viewport);
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.sizeDelta = Vector2.zero;
+            VerticalLayoutGroup layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 14f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            ContentSizeFitter fitter = content.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scroll.viewport = viewport;
+            scroll.content = content;
+            activeScroll = scroll;
+            activeViewport = viewport;
+
+            RectTransform barRect = Rect("Scrollbar", scrollRoot);
+            barRect.anchorMin = new Vector2(1f, 0f);
+            barRect.anchorMax = Vector2.one;
+            barRect.pivot = new Vector2(1f, 0.5f);
+            barRect.offsetMin = new Vector2(-12f, 0f);
+            barRect.offsetMax = Vector2.zero;
+            Image barBackground = barRect.gameObject.AddComponent<Image>();
+            barBackground.color = new Color(0.13f, 0.30f, 0.34f, 0.25f);
+            RectTransform handleRect = Rect("Handle", barRect);
+            Stretch(handleRect, 0f, 0f, 0f, 0f);
+            Image handle = handleRect.gameObject.AddComponent<Image>();
+            handle.color = Blue;
+            Scrollbar scrollbar = barRect.gameObject.AddComponent<Scrollbar>();
+            scrollbar.handleRect = handleRect;
+            scrollbar.targetGraphic = handle;
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+            scroll.verticalScrollbar = scrollbar;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            scroll.verticalScrollbarSpacing = -12f;
 
             Selectable first = null;
             foreach (ModMenuItem item in menu.Items)
@@ -755,6 +868,24 @@ namespace ModsPanel
                 Mathf.Clamp01((local.y - rect.yMin) / rect.height));
             try { Clicked(normalized); }
             catch (Exception exception) { MelonLogger.Error($"ModsUi image click failed: {exception}"); }
+        }
+    }
+
+    internal sealed class WindowDragHandle : MonoBehaviour, IBeginDragHandler, IDragHandler
+    {
+        internal RectTransform Target;
+        internal Canvas Canvas;
+
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+            if (Target != null) Target.SetAsLastSibling();
+        }
+
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (Target == null) return;
+            float scale = Canvas != null && Canvas.scaleFactor > 0f ? Canvas.scaleFactor : 1f;
+            Target.anchoredPosition += eventData.delta / scale;
         }
     }
 }
