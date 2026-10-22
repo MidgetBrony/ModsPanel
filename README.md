@@ -18,6 +18,15 @@ register their own sections automatically.
 Open BOXROOM's **Mods** tab and select **Mod Settings**. Select the inner
 **Mods** tab to return to BOXROOM's normal Mods screen.
 
+The subtabs sit beside the heading in BOXROOM's October 19 sidebar menu. The
+native Mods page keeps its own scroll position when switching to Mod Settings.
+Controller navigation uses BOXROOM's native navigation group and scroll-follow
+behavior: move between the subtabs and controls, and use Back to return focus to
+the sidebar. Mouse users keep pointer focus when switching pages.
+
+Checkboxes in settings and gameplay menus reuse the current native BOXROOM
+checkbox template, including its checked state and focus colors.
+
 ## Mod developer usage: settings
 
 Reference `ModsPanel.dll`, then register a stable section during your mod's
@@ -149,3 +158,11 @@ dotnet build -c Release -p:DeployToGame=false
 ```
 
 `Directory.Build.user.props` is ignored so local Steam paths are not committed.
+
+## Hosting settings in a media page
+
+`ModsPanelApi.RenderEmbeddedSection(section, parent, styleSource)` renders the
+existing controls in another container. Set `section.VisibleInModSettings = false`
+when that container replaces the Mod Settings section. BR-MediaAPI exposes this
+through `MediaLibraryFolderOptions.SettingsSection`. Existing sections remain
+visible in Mod Settings by default.

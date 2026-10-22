@@ -516,6 +516,18 @@ namespace ModsPanel
                 toggleLabel.rectTransform.offsetMax = new Vector2(-100f, 0f);
                 toggleLabel.alignment = TextAlignmentOptions.MidlineLeft;
 
+                Toggle nativeToggle = NativeCheckbox.Create(row);
+                if (nativeToggle != null)
+                {
+                    RectTransform nativeRect = (RectTransform)nativeToggle.transform;
+                    nativeRect.anchorMin = nativeRect.anchorMax = new Vector2(1f, 0.5f);
+                    nativeRect.anchoredPosition = new Vector2(-42f, 0f);
+                    nativeToggle.SetIsOnWithoutNotify(SafeValue(option.GetValue, false));
+                    nativeToggle.onValueChanged.AddListener(new UnityAction<bool>(value =>
+                        SafeInvoke(() => option.SetValue(value))));
+                    return nativeToggle;
+                }
+
                 RectTransform toggleRect = Rect("Toggle", row);
                 toggleRect.anchorMin = toggleRect.anchorMax = new Vector2(1f, 0.5f);
                 toggleRect.anchoredPosition = new Vector2(-42f, 0f);

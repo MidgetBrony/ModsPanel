@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
+using TMPro;
 
 namespace ModsPanel
 {
@@ -49,7 +51,16 @@ namespace ModsPanel
             NotifyChanged();
         }
 
+        /// <summary>Renders a section's controls inside another native UI container.</summary>
+        public static GameObject RenderEmbeddedSection(ModSection section, Transform parent, TMP_Text styleSource = null)
+        {
+            if (section == null) throw new ArgumentNullException(nameof(section));
+            if (parent == null) throw new ArgumentNullException(nameof(parent));
+            return ModsPanelRuntime.CreateEmbedded(section, parent, styleSource);
+        }
+
         internal static IReadOnlyList<ModSection> Snapshot() => Sections
+            .Where(section => section.VisibleInModSettings)
             .OrderBy(section => section.Order)
             .ThenBy(section => section.Title, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -77,6 +88,13 @@ namespace ModsPanel
         public string Title { get; internal set; }
         public int Order { get; internal set; }
         internal IReadOnlyList<ModControl> Controls => controls;
+        private bool visibleInModSettings = true;
+        /// <summary>Hide a section here when its controls are hosted by a media page.</summary>
+        public bool VisibleInModSettings
+        {
+            get => visibleInModSettings;
+            set { visibleInModSettings = value; ModsPanelApi.NotifyChanged(); }
+        }
 
         /// <summary>
         /// Removes all existing controls. This is useful when a mod re-registers

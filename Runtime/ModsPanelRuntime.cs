@@ -11,6 +11,7 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using SteamShelf;
 using SteamShelf.Input;
+using SteamShelf.UI;
 
 namespace ModsPanel
 {
@@ -36,9 +37,14 @@ namespace ModsPanel
         private GameObject overlay;
         private Button modsTabButton;
         private Button settingsTabButton;
-        private bool wasModsTabVisible;
+        private GameObject nativePage;
+        private UI_NavigationGroup navigationGroup;
+        private int navigationRebuildFrames;
         private int settingsFocusFrames;
         private RectTransform content;
+        private readonly List<TMP_Text> descriptionLabels = new List<TMP_Text>();
+        private bool sizingRequested;
+        private float measuredWidth = -1f;
         private TMP_Text fontTemplate;
         private bool installRequested;
         private bool rebuildRequested;
@@ -54,6 +60,19 @@ namespace ModsPanel
             DontDestroyOnLoad(host);
             Instance = host.AddComponent<ModsPanelRuntime>();
             return Instance;
+        }
+
+        internal static GameObject CreateEmbedded(ModSection section, Transform parent, TMP_Text styleSource)
+        {
+            RectTransform host = CreateRect("Embedded " + section.OwnerId, parent);
+            var layout = host.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
+            var renderer = host.gameObject.AddComponent<ModsPanelRuntime>();
+            renderer.content = host; renderer.fontTemplate = styleSource;
+            renderer.sizingRequested = true;
+            renderer.BuildSection(section, true);
+            return host.gameObject;
         }
 
         internal void RequestInstall()
@@ -82,25 +101,59 @@ namespace ModsPanel
             }
 
             bool modsTabVisible = modsTab != null && modsTab.gameObject.activeInHierarchy;
-            if (modsTabVisible && !wasModsTabVisible)
-                FocusModsTabEntry();
-            wasModsTabVisible = modsTabVisible;
-
-            if (modsTabVisible)
+            if (modsTabVisible && navigationRebuildFrames > 0)
             {
-                if (settingsFocusFrames > 0)
-                {
-                    settingsFocusFrames--;
-                    if (settingsFocusFrames == 0) FocusFirstSetting();
-                }
+                navigationRebuildFrames--;
+                if (navigationRebuildFrames == 0)
+                    navigationGroup?.Rebuild();
+            }
+
+            if (modsTabVisible && settingsFocusFrames > 0)
+            {
+                settingsFocusFrames--;
+                if (settingsFocusFrames == 0 && UsingController)
+                    FocusFirstSetting();
             }
         }
 
-        private void FocusModsTabEntry()
+        private void LateUpdate()
         {
-            if (modsTabButton == null || EventSystem.current == null) return;
-            EventSystem.current.SetSelectedGameObject(modsTabButton.gameObject);
+            if (content == null || !content.gameObject.activeInHierarchy) return;
+            float width = content.rect.width;
+            if (!sizingRequested && Mathf.Abs(width - measuredWidth) < 0.5f) return;
+
+            sizingRequested = false;
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+            measuredWidth = content.rect.width;
+            foreach (TMP_Text label in descriptionLabels)
+            {
+                if (label == null) continue;
+                LayoutElement row = label.transform.parent.GetComponent<LayoutElement>();
+                float height = Mathf.Max(68f,
+                    label.GetPreferredValues(label.text, Mathf.Max(1f, label.rectTransform.rect.width),
+                        Mathf.Infinity).y + 8f);
+                row.minHeight = row.preferredHeight = height;
+            }
+
+            // Cards must include the measured multiline rows, not a fixed estimate.
+            foreach (Transform card in content)
+            {
+                if (!card.gameObject.activeSelf) continue;
+                VerticalLayoutGroup layout = card.GetComponent<VerticalLayoutGroup>();
+                if (layout == null) continue;
+                float height = layout.padding.vertical;
+                foreach (Transform row in card)
+                    height += LayoutUtility.GetPreferredHeight((RectTransform)row);
+                LayoutElement element = card.GetComponent<LayoutElement>();
+                element.minHeight = element.preferredHeight = height;
+            }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+            navigationRebuildFrames = 2;
         }
+
+        private static bool UsingController => Singleton<InputManager>.HasInstance() &&
+            Singleton<InputManager>.Instance.IsUsingController;
 
         private void TryInstall()
         {
@@ -129,14 +182,29 @@ namespace ModsPanel
         private void Install(RectTransform target)
         {
             modsTab = target;
-            fontTemplate = target.GetComponentInChildren<TMP_Text>(true);
+            nativeChildStates.Clear();
+            nativePage = target.Find("Scroll View")?.gameObject;
+            navigationGroup = target.GetComponent<UI_NavigationGroup>();
+            fontTemplate = target.Find("Title")?.GetComponent<TMP_Text>() ??
+                target.GetComponentInChildren<TMP_Text>(true);
 
             BuildSubtabs(target);
 
             overlay = CreateRect("ModsPanel Overlay", target).gameObject;
-            // The native Mods page begins immediately below the narrow white strip
-            // at the top of ModsTab. Start our alternate page at the same point.
-            Stretch((RectTransform)overlay.transform, 18f, 18f, 58f, 18f);
+            // Match the new native page bounds below the heading. Keep the native
+            // scroll view in place so its layout and scroll position survive switching.
+            RectTransform pageRect = nativePage != null ? (RectTransform)nativePage.transform : null;
+            RectTransform overlayRect = (RectTransform)overlay.transform;
+            if (pageRect != null)
+            {
+                overlayRect.anchorMin = pageRect.anchorMin;
+                overlayRect.anchorMax = pageRect.anchorMax;
+                overlayRect.pivot = pageRect.pivot;
+                overlayRect.sizeDelta = pageRect.sizeDelta;
+                overlayRect.anchoredPosition = pageRect.anchoredPosition;
+            }
+            else
+                Stretch(overlayRect, 60f, 60f, 120f, 18f);
             // Keep BOXROOM's own textured settings sheet visible. A nearly
             // transparent graphic still gives the overlay a raycast surface
             // without painting a flat rectangle over the native background.
@@ -159,14 +227,19 @@ namespace ModsPanel
         private void BuildSubtabs(RectTransform parent)
         {
             RectTransform tabs = CreateRect("ModsPanel Subtabs", parent);
-            tabs.anchorMin = new Vector2(0f, 1f);
+            // The October menu has a full-height sidebar and a heading inside
+            // ModsTab. Reserve the right side of that heading for our two pages.
+            tabs.anchorMin = new Vector2(0.35f, 1f);
             tabs.anchorMax = new Vector2(1f, 1f);
-            tabs.pivot = new Vector2(0.5f, 1f);
-            // ModsTab itself begins below BOXROOM's main navigation. A positive
-            // local Y places these buttons in the unused white strip instead of
-            // across the native "Share Current Room Template" title bar.
-            tabs.anchoredPosition = new Vector2(0f, 32f);
-            tabs.sizeDelta = new Vector2(0f, 46f);
+            tabs.pivot = new Vector2(1f, 1f);
+            tabs.anchoredPosition = new Vector2(-60f, -34f);
+            tabs.sizeDelta = new Vector2(-80f, 64f);
+            var layout = tabs.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 12f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = true;
             Canvas tabsCanvas = tabs.gameObject.AddComponent<Canvas>();
             tabsCanvas.overrideSorting = true;
             tabsCanvas.sortingOrder = 60;
@@ -174,12 +247,7 @@ namespace ModsPanel
 
             Button modsButton = CreateButton("Mods Tab", tabs, "Mods", ClosePanel);
             modsTabButton = modsButton;
-            RectTransform modsRect = (RectTransform)modsButton.transform;
-            modsRect.anchorMin = new Vector2(0f, 0.5f);
-            modsRect.anchorMax = new Vector2(0f, 0.5f);
-            modsRect.pivot = new Vector2(0f, 0.5f);
-            modsRect.anchoredPosition = new Vector2(22f, 0f);
-            modsRect.sizeDelta = new Vector2(205f, 42f);
+            modsButton.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
 
             Button settingsButton = CreateButton(
                 "Mod Settings Tab",
@@ -187,77 +255,11 @@ namespace ModsPanel
                 "Mod Settings",
                 OpenPanel);
             settingsTabButton = settingsButton;
-            RectTransform settingsRect = (RectTransform)settingsButton.transform;
-            settingsRect.anchorMin = new Vector2(0f, 0.5f);
-            settingsRect.anchorMax = new Vector2(0f, 0.5f);
-            settingsRect.pivot = new Vector2(0f, 0.5f);
-            settingsRect.anchoredPosition = new Vector2(239f, 0f);
-            settingsRect.sizeDelta = new Vector2(230f, 42f);
+            settingsButton.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
 
-            BuildControllerLegend(parent);
-
-            Navigation modsNavigation = modsButton.navigation;
-            modsNavigation.mode = Navigation.Mode.Explicit;
-            modsNavigation.selectOnRight = settingsButton;
-            modsButton.navigation = modsNavigation;
-            Navigation settingsNavigation = settingsButton.navigation;
-            settingsNavigation.mode = Navigation.Mode.Explicit;
-            settingsNavigation.selectOnLeft = modsButton;
-            settingsButton.navigation = settingsNavigation;
-        }
-
-        private void BuildControllerLegend(RectTransform parent)
-        {
-            if (!ControllerGlyphs.HasConnectedGamepad) return;
-
-            RectTransform legend = CreateRect("Controller Legend", parent);
-            legend.anchorMin = new Vector2(0f, 0f);
-            legend.anchorMax = new Vector2(1f, 0f);
-            legend.pivot = new Vector2(0.5f, 0f);
-            legend.anchoredPosition = new Vector2(0f, 10f);
-            legend.sizeDelta = new Vector2(0f, 64f);
-
-            float x = 36f;
-            Sprite confirm = ControllerGlyphs.ForAction("Confirm");
-            Sprite back = ControllerGlyphs.ForAction("Back");
-            AddLegendItem(legend, confirm, "SELECT", ref x);
-            AddLegendItem(legend, back, "BACK", ref x);
-        }
-
-        private void AddLegendItem(RectTransform parent, Sprite sprite, string caption, ref float x)
-        {
-            if (sprite != null)
-            {
-                RectTransform iconRect = CreateRect("Glyph", parent);
-                iconRect.anchorMin = iconRect.anchorMax = new Vector2(0f, 0.5f);
-                iconRect.pivot = new Vector2(0f, 0.5f);
-                iconRect.anchoredPosition = new Vector2(x, 0f);
-                iconRect.sizeDelta = new Vector2(52f, 52f);
-                Image icon = iconRect.gameObject.AddComponent<Image>();
-                icon.sprite = sprite;
-                icon.preserveAspect = true;
-                Shadow shadow = iconRect.gameObject.AddComponent<Shadow>();
-                shadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
-                shadow.effectDistance = new Vector2(3f, -4f);
-                x += 62f;
-            }
-            if (!string.IsNullOrEmpty(caption))
-            {
-                TMP_Text label = CreateText("Legend Label", parent, caption, 30f, Color.white);
-                RectTransform labelRect = label.rectTransform;
-                labelRect.anchorMin = labelRect.anchorMax = new Vector2(0f, 0.5f);
-                labelRect.pivot = new Vector2(0f, 0.5f);
-                labelRect.anchoredPosition = new Vector2(x, 0f);
-                labelRect.sizeDelta = new Vector2(190f, 54f);
-                label.alignment = TextAlignmentOptions.MidlineLeft;
-                Outline outline = label.gameObject.AddComponent<Outline>();
-                outline.effectColor = Color.black;
-                outline.effectDistance = new Vector2(2f, -2f);
-                Shadow textShadow = label.gameObject.AddComponent<Shadow>();
-                textShadow.effectColor = new Color(0f, 0f, 0f, 0.65f);
-                textShadow.effectDistance = new Vector2(4f, -4f);
-                x += 210f;
-            }
+            // Leave these controls in ModsTab's native navigation group. It
+            // builds links through both pages and preserves the sidebar exits
+            // and BOXROOM's Back-to-sidebar behavior.
         }
 
         private void BuildScrollArea(RectTransform parent)
@@ -301,6 +303,7 @@ namespace ModsPanel
             scroll.verticalScrollbar = scrollbar;
             scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             scroll.verticalScrollbarSpacing = 6f;
+            scrollRoot.gameObject.AddComponent<UI_ScrollRectFollowSelection>();
         }
 
         private Scrollbar BuildScrollbar(RectTransform parent)
@@ -333,25 +336,23 @@ namespace ModsPanel
                 return;
 
             nativeChildStates.Clear();
-            foreach (Transform child in modsTab)
+            if (nativePage != null)
             {
-                GameObject childObject = child.gameObject;
-                if (childObject == overlay || childObject.name == "ModsPanel Subtabs")
-                    continue;
-
-                nativeChildStates[childObject] = childObject.activeSelf;
-                childObject.SetActive(false);
+                nativeChildStates[nativePage] = nativePage.activeSelf;
+                nativePage.SetActive(false);
             }
 
             overlay.SetActive(true);
             overlay.transform.SetAsLastSibling();
             RebuildControls();
             Canvas.ForceUpdateCanvases();
-            settingsFocusFrames = 2;
+            settingsFocusFrames = UsingController ? 2 : 0;
+            navigationRebuildFrames = 2;
         }
 
         private void ClosePanel()
         {
+            settingsFocusFrames = 0;
             if (overlay != null)
                 overlay.SetActive(false);
 
@@ -361,7 +362,8 @@ namespace ModsPanel
                     state.Key.SetActive(state.Value);
             }
             nativeChildStates.Clear();
-            if (modsTabButton != null && EventSystem.current != null)
+            navigationRebuildFrames = 2;
+            if (UsingController && modsTabButton != null && EventSystem.current != null)
                 EventSystem.current.SetSelectedGameObject(modsTabButton.gameObject);
         }
 
@@ -370,15 +372,23 @@ namespace ModsPanel
             if (content == null || EventSystem.current == null) return;
             Selectable first = content.GetComponentsInChildren<Selectable>(false)
                 .FirstOrDefault(item => item != null && item.IsInteractable());
-            if (first != null) EventSystem.current.SetSelectedGameObject(first.gameObject);
+            EventSystem.current.SetSelectedGameObject(
+                first != null ? first.gameObject : settingsTabButton.gameObject);
         }
 
         private void RebuildControls()
         {
             if (content == null) return;
 
+            navigationRebuildFrames = 2;
+            sizingRequested = true;
+            descriptionLabels.Clear();
             for (int index = content.childCount - 1; index >= 0; index--)
-                Destroy(content.GetChild(index).gameObject);
+            {
+                GameObject oldControl = content.GetChild(index).gameObject;
+                oldControl.SetActive(false);
+                Destroy(oldControl);
+            }
 
             IReadOnlyList<ModSection> sections = ModsPanelApi.Snapshot();
             if (sections.Count == 0)
@@ -401,11 +411,11 @@ namespace ModsPanel
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
         }
 
-        private void BuildSection(ModSection section)
+        private void BuildSection(ModSection section, bool embedded = false)
         {
             RectTransform card = CreateRect($"Section {section.OwnerId}", content);
             Image frame = card.gameObject.AddComponent<Image>();
-            frame.color = Teal;
+            frame.color = embedded ? Color.clear : Teal;
             frame.sprite = FindLoadedSprite("SquareRounded_Border");
             frame.type = Image.Type.Sliced;
             frame.pixelsPerUnitMultiplier = 1f;
@@ -429,6 +439,8 @@ namespace ModsPanel
             // one primary Graphic per object; putting Image beside TMP_Text caused
             // the heading background to disappear and destabilized preferred-size
             // calculation for the rows below it.
+            if (!embedded)
+            {
             RectTransform headingRoot = CreateRect("Heading", card);
             Image headingImage = headingRoot.gameObject.AddComponent<Image>();
             headingImage.color = NativeHeadingTeal;
@@ -439,6 +451,8 @@ namespace ModsPanel
             TMP_Text heading = CreateText("Text", headingRoot, section.Title, 42f, Color.white);
             Stretch(heading.rectTransform, 24f, 12f, 0f, 0f);
             heading.alignment = TextAlignmentOptions.MidlineLeft;
+
+            }
 
             foreach (ModControl control in section.Controls)
             {
@@ -548,6 +562,18 @@ namespace ModsPanel
             TMP_Text label = CreateText("Label", row, control.Label, 38f, Ink);
             PlaceTop(label.rectTransform, 0f, 0.82f, 10f, 64f, 18f, 8f);
             label.alignment = TextAlignmentOptions.MidlineLeft;
+
+            Toggle nativeToggle = NativeCheckbox.Create(row);
+            if (nativeToggle != null)
+            {
+                RectTransform nativeRect = (RectTransform)nativeToggle.transform;
+                nativeRect.anchorMin = nativeRect.anchorMax = new Vector2(1f, 0.5f);
+                nativeRect.anchoredPosition = new Vector2(-58f, 0f);
+                nativeToggle.SetIsOnWithoutNotify(SafeInvoke(control.GetValue, false));
+                nativeToggle.onValueChanged.AddListener(new UnityAction<bool>(value =>
+                    SafeInvoke(() => control.SetValue(value))));
+                return;
+            }
 
             RectTransform toggleRect = CreateRect("Toggle", row);
             toggleRect.anchorMin = new Vector2(1f, 0.5f);
@@ -686,6 +712,7 @@ namespace ModsPanel
             Stretch(text.rectTransform, 18f, 18f, 4f, 4f);
             text.alignment = TextAlignmentOptions.MidlineLeft;
             text.textWrappingMode = TextWrappingModes.Normal;
+            descriptionLabels.Add(text);
         }
 
         private void BuildRowLabel(RectTransform row, string label, float anchorMaxX)
@@ -831,7 +858,8 @@ namespace ModsPanel
         private RectTransform CreateRow(RectTransform parent, string name, float height)
         {
             RectTransform row = CreateRect($"Control {name}", parent);
-            row.gameObject.AddComponent<LayoutElement>().preferredHeight = height;
+            LayoutElement sizing = row.gameObject.AddComponent<LayoutElement>();
+            sizing.minHeight = sizing.preferredHeight = height;
             return row;
         }
 
