@@ -95,6 +95,8 @@ Available settings controls:
 - Action button
 - Read-only label and vertical spacer
 
+Folder controls stack their label, path, status, and actions on dedicated rows so long labels do not overlap the selected path.
+
 The panel owns scrolling, section ordering, BOXROOM-like colors, font reuse,
 and scene rebuilding. A mod should register definitions once and keep its actual
 values in its own save/configuration system.
@@ -108,6 +110,7 @@ layout, scroll when needed, and focus the first selectable control.
 
 ```csharp
 private static bool createTwoWayLink = true;
+private static string apiKey = string.Empty;
 
 private static void OpenRoomPicker()
 {
@@ -119,7 +122,12 @@ private static void OpenRoomPicker()
         .AddToggle(
             "Create a two-way link",
             () => createTwoWayLink,
-            value => createTwoWayLink = value);
+            value => createTwoWayLink = value)
+        .AddPasswordInput(
+            "API key",
+            () => apiKey,
+            value => apiKey = value,
+            "Paste the private key");
 
     foreach (RoomInfo room in AvailableRooms)
     {
@@ -137,7 +145,8 @@ private static void OpenRoomPicker()
 
 General menus support headings, wrapped labels, texture previews through
 `AddImage`, optional normalized click coordinates for interactive previews,
-action buttons with optional detail text, toggles, spacers, a focused image
+action buttons with optional detail text, toggles, standard and masked password
+inputs, spacers, a focused image
 viewer layout, custom eyebrow/title/subtitle/close text, an
 `Closed` callback, explicit `Close()`, and global `ModsUi.CloseMenu()` /
 `ModsUi.IsMenuOpen` access. Use `ModsUi.ShowToast(message)` for transient

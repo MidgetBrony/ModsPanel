@@ -477,10 +477,10 @@ namespace ModsPanel
 
         private void BuildFolderControl(RectTransform parent, FolderControl control)
         {
-            RectTransform row = CreateRow(parent, control.Id, 154f);
+            RectTransform row = CreateRow(parent, control.Id, 206f);
 
             TMP_Text label = CreateText("Label", row, control.Label, 38f, Ink);
-            PlaceTop(label.rectTransform, 0f, 0.2f, 16f, 58f, 18f, 8f);
+            PlaceTop(label.rectTransform, 0f, 1f, 8f, 48f, 18f, 18f);
             label.alignment = TextAlignmentOptions.MidlineLeft;
 
             Image field = CreateRect("Path", row).gameObject.AddComponent<Image>();
@@ -488,7 +488,7 @@ namespace ModsPanel
             field.sprite = FindLoadedSprite("SquareRounded_Border");
             field.type = Image.Type.Sliced;
             field.pixelsPerUnitMultiplier = 3.5f;
-            PlaceTop(field.rectTransform, 0.2f, 0.76f, 14f, 64f, 8f, 8f);
+            PlaceTop(field.rectTransform, 0f, 0.79f, 62f, 64f, 18f, 8f);
 
             TMP_Text pathText = CreateText(
                 "Value",
@@ -509,7 +509,7 @@ namespace ModsPanel
                 control.GetStatus == null ? string.Empty : SafeInvoke(control.GetStatus, string.Empty),
                 38f,
                 Ink);
-            PlaceTop(status.rectTransform, 0.2f, 0.61f, 84f, 48f, 8f, 8f);
+            PlaceTop(status.rectTransform, 0f, 0.61f, 136f, 48f, 18f, 8f);
             status.alignment = TextAlignmentOptions.MidlineLeft;
 
             Button browse = CreateButton("Browse", row, "Browse", () =>
@@ -529,7 +529,7 @@ namespace ModsPanel
                     ? string.Empty
                     : SafeInvoke(control.GetStatus, string.Empty);
             });
-            PlaceTop((RectTransform)browse.transform, 0.8f, 1f, 14f, 64f, 8f, 28f);
+            PlaceTop((RectTransform)browse.transform, 0.8f, 1f, 62f, 64f, 8f, 18f);
 
             if (control.Refresh != null)
             {
@@ -541,7 +541,7 @@ namespace ModsPanel
                         ? string.Empty
                         : SafeInvoke(control.GetStatus, string.Empty);
                 });
-                PlaceTop((RectTransform)refresh.transform, 0.62f, 0.79f, 84f, 54f, 8f, 8f);
+                PlaceTop((RectTransform)refresh.transform, 0.62f, 0.79f, 136f, 54f, 8f, 8f);
             }
         }
 
@@ -837,7 +837,7 @@ namespace ModsPanel
 
         private static float GetControlHeight(ModControl control)
         {
-            if (control is FolderControl) return 154f;
+            if (control is FolderControl) return 206f;
             if (control is SpacerControl spacer) return spacer.Height;
             if (control is LabelControl) return 68f;
             return 92f;

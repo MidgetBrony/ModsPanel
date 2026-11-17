@@ -669,8 +669,11 @@ namespace ModsPanel
                 input.textComponent = value;
                 input.placeholder = placeholder;
                 input.lineType = TMP_InputField.LineType.SingleLine;
-                input.contentType = TMP_InputField.ContentType.Standard;
+                input.contentType = textInput.IsPassword
+                    ? TMP_InputField.ContentType.Password
+                    : TMP_InputField.ContentType.Standard;
                 input.text = SafeValue(textInput.GetValue, string.Empty);
+                input.ForceLabelUpdate();
                 input.onValueChanged.AddListener(new UnityAction<string>(newValue =>
                     SafeInvoke(() => textInput.SetValue(newValue))));
                 return input;

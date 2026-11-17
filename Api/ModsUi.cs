@@ -139,7 +139,16 @@ namespace ModsPanel
         public ModMenu AddTextInput(string label, Func<string> getValue,
             Action<string> setValue, string placeholder = "")
         {
-            items.Add(new ModMenuTextInput(label, getValue, setValue, placeholder));
+            items.Add(new ModMenuTextInput(label, getValue, setValue, placeholder, false));
+            RefreshIfOpen();
+            return this;
+        }
+
+        /// <summary>Adds a masked single-line input for credentials or other sensitive values.</summary>
+        public ModMenu AddPasswordInput(string label, Func<string> getValue,
+            Action<string> setValue, string placeholder = "")
+        {
+            items.Add(new ModMenuTextInput(label, getValue, setValue, placeholder, true));
             RefreshIfOpen();
             return this;
         }
@@ -265,16 +274,18 @@ namespace ModsPanel
     internal sealed class ModMenuTextInput : ModMenuItem
     {
         internal ModMenuTextInput(string label, Func<string> getValue,
-            Action<string> setValue, string placeholder)
+            Action<string> setValue, string placeholder, bool isPassword)
         {
             Label = label ?? string.Empty;
             GetValue = getValue ?? (() => string.Empty);
             SetValue = setValue ?? (_ => { });
             Placeholder = placeholder ?? string.Empty;
+            IsPassword = isPassword;
         }
         internal string Label { get; }
         internal Func<string> GetValue { get; }
         internal Action<string> SetValue { get; }
         internal string Placeholder { get; }
+        internal bool IsPassword { get; }
     }
 }
