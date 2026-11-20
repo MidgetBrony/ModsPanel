@@ -13,7 +13,7 @@ using SteamShelf.UI;
 namespace ModsPanel
 {
     /// <summary>Renders the public ModsUi modal menu definitions.</summary>
-    internal sealed class ModMenuRuntime : MonoBehaviour
+    internal sealed class ModMenuRuntime : MonoBehaviour, IInputReceiver
     {
         private static readonly Color Ink = new Color32(32, 61, 64, 255);
         private static readonly Color DeepBlue = new Color32(33, 77, 90, 255);
@@ -38,6 +38,7 @@ namespace ModsPanel
         internal static ModMenuRuntime Instance { get; private set; }
         internal static bool HasOpenMenu => Instance != null && Instance.openMenu != null;
         internal static bool IsOpen(ModMenu menu) => Instance != null && Instance.openMenu == menu;
+        public EInputMap InputMap => EInputMap.UI;
 
         internal static ModMenuRuntime Ensure()
         {
@@ -65,7 +66,10 @@ namespace ModsPanel
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             if (Singleton<InputManager>.HasInstance())
+            {
+                Singleton<InputManager>.Instance.SetExclusiveReceiver(this);
                 Singleton<InputManager>.Instance.SwapToInputMap(EInputMap.UI);
+            }
             Build(menu);
         }
 
@@ -82,8 +86,17 @@ namespace ModsPanel
             Cursor.visible = previousCursorVisible;
             Menu.MenuCursorStateChanged?.Invoke(previousInputMap == EInputMap.UI);
             if (Singleton<InputManager>.HasInstance())
+            {
+                Singleton<InputManager>.Instance.ClearExclusiveReceiver(this);
                 Singleton<InputManager>.Instance.SwapToInputMap(previousInputMap);
+            }
             SafeInvoke(closing.Closed);
+        }
+
+        public void ReceiveInput(InputContext inputContext)
+        {
+            if (openMenu != null && inputContext is UIInputContext uiInput && uiInput.BackPressedThisFrame)
+                CloseMenu();
         }
 
         internal void ShowToast(string message, float seconds)
@@ -120,9 +133,6 @@ namespace ModsPanel
 
         private void Update()
         {
-            if (openMenu != null && Input.GetKeyDown(KeyCode.Escape))
-                CloseMenu();
-
             if (toastRoot != null && Time.realtimeSinceStartup >= toastUntil)
             {
                 Destroy(toastRoot);
