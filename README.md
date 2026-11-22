@@ -145,12 +145,25 @@ private static void OpenRoomPicker()
 
 General menus support headings, wrapped labels, texture previews through
 `AddImage`, optional normalized click coordinates for interactive previews,
-action buttons with optional detail text, toggles, standard and masked password
-inputs, spacers, a focused image
+action buttons with optional detail text, compact action/trash rows through
+`AddDeleteRow`, color-swatch action/trash rows through `AddColorDeleteRow`,
+toggles, standard and masked password inputs, spacers, a focused image
 viewer layout, custom eyebrow/title/subtitle/close text, an
 `Closed` callback, explicit `Close()`, and global `ModsUi.CloseMenu()` /
 `ModsUi.IsMenuOpen` access. Use `ModsUi.ShowToast(message)` for transient
 feedback that does not interrupt gameplay.
+
+For a named color collection, a compact native-style row can show the live
+color, select it from the main action, and remove it from the trash action:
+
+```csharp
+menu.AddColorDeleteRow(
+    favorite.Name,
+    () => favorite.Color,
+    () => SelectFavorite(favorite),
+    () => DeleteFavorite(favorite),
+    favorite.Hex);
+```
 
 For live editors that should leave the game object visible, set
 `ModMenu.CompactWindow = true`. Set `ModMenu.Draggable = true` to let the user

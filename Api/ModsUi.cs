@@ -93,6 +93,23 @@ namespace ModsPanel
             return this;
         }
 
+        /// <summary>Adds one compact primary action with a red trash button on the right.</summary>
+        public ModMenu AddDeleteRow(string text, Action pressed, Action deletePressed, string detail = "")
+        {
+            items.Add(new ModMenuDeleteRow(text, detail, pressed, deletePressed, null));
+            RefreshIfOpen();
+            return this;
+        }
+
+        /// <summary>Adds a compact primary action with a color swatch and red trash button.</summary>
+        public ModMenu AddColorDeleteRow(string text, Func<Color> getColor,
+            Action pressed, Action deletePressed, string detail = "")
+        {
+            items.Add(new ModMenuDeleteRow(text, detail, pressed, deletePressed, getColor));
+            RefreshIfOpen();
+            return this;
+        }
+
         /// <summary>Adds a non-interactive image preview to the menu.</summary>
         public ModMenu AddImage(Func<Texture> getTexture, float preferredHeight = 430f)
         {
@@ -196,6 +213,25 @@ namespace ModsPanel
         internal string Text { get; }
         internal string Detail { get; }
         internal Action Pressed { get; }
+    }
+
+    internal sealed class ModMenuDeleteRow : ModMenuItem
+    {
+        internal ModMenuDeleteRow(string text, string detail, Action pressed, Action deletePressed,
+            Func<Color> getColor)
+        {
+            Text = text ?? string.Empty;
+            Detail = detail ?? string.Empty;
+            Pressed = pressed ?? (() => { });
+            DeletePressed = deletePressed ?? (() => { });
+            GetColor = getColor;
+        }
+
+        internal string Text { get; }
+        internal string Detail { get; }
+        internal Action Pressed { get; }
+        internal Action DeletePressed { get; }
+        internal Func<Color> GetColor { get; }
     }
 
     internal sealed class ModMenuImage : ModMenuItem

@@ -503,6 +503,45 @@ namespace ModsPanel
                 }
                 return button;
             }
+            if (item is ModMenuDeleteRow deleteRow)
+            {
+                RectTransform row = LayoutRow("Action With Delete", 96f);
+                Button primary = Button("Primary Action", row, deleteRow.Text, Blue,
+                    () => SafeInvoke(deleteRow.Pressed));
+                Stretch((RectTransform)primary.transform, 0f, 104f, 0f, 0f);
+                TMP_Text caption = primary.GetComponentInChildren<TMP_Text>();
+                if (!string.IsNullOrWhiteSpace(deleteRow.Detail))
+                {
+                    caption.text = deleteRow.Text + "\n<size=25>" + deleteRow.Detail + "</size>";
+                    caption.alignment = TextAlignmentOptions.MidlineLeft;
+                }
+                if (deleteRow.GetColor != null)
+                {
+                    RectTransform swatchRect = Rect("Color Swatch", primary.transform);
+                    swatchRect.anchorMin = swatchRect.anchorMax = new Vector2(0f, 0.5f);
+                    swatchRect.pivot = new Vector2(0f, 0.5f);
+                    swatchRect.anchoredPosition = new Vector2(18f, 0f);
+                    swatchRect.sizeDelta = new Vector2(58f, 58f);
+                    Image swatch = swatchRect.gameObject.AddComponent<Image>();
+                    swatch.color = SafeValue(deleteRow.GetColor, Color.white);
+                    swatch.sprite = FindSprite("SquareRounded_Filled");
+                    swatch.type = Image.Type.Sliced;
+                    swatch.pixelsPerUnitMultiplier = 3.5f;
+                    swatch.raycastTarget = false;
+                    caption.rectTransform.offsetMin = new Vector2(90f, caption.rectTransform.offsetMin.y);
+                }
+
+                Button delete = Button("Delete", row, string.Empty, Red,
+                    () => SafeInvoke(deleteRow.DeletePressed));
+                RectTransform deleteRect = (RectTransform)delete.transform;
+                deleteRect.anchorMin = new Vector2(1f, 0f);
+                deleteRect.anchorMax = Vector2.one;
+                deleteRect.pivot = new Vector2(1f, 0.5f);
+                deleteRect.offsetMin = new Vector2(-92f, 0f);
+                deleteRect.offsetMax = Vector2.zero;
+                DrawTrashIcon(deleteRect);
+                return primary;
+            }
             if (item is ModMenuImage preview)
             {
                 RectTransform row = LayoutRow("Image Preview", preview.PreferredHeight);
@@ -727,6 +766,27 @@ namespace ModsPanel
             text.raycastTarget = false;
             text.textWrappingMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             return text;
+        }
+
+        private static void DrawTrashIcon(RectTransform parent)
+        {
+            RectTransform body = Rect("Trash Body", parent);
+            body.anchorMin = body.anchorMax = new Vector2(0.5f, 0.5f);
+            body.anchoredPosition = new Vector2(0f, -5f);
+            body.sizeDelta = new Vector2(30f, 34f);
+            body.gameObject.AddComponent<Image>().color = Paper;
+
+            RectTransform lid = Rect("Trash Lid", parent);
+            lid.anchorMin = lid.anchorMax = new Vector2(0.5f, 0.5f);
+            lid.anchoredPosition = new Vector2(0f, 17f);
+            lid.sizeDelta = new Vector2(40f, 7f);
+            lid.gameObject.AddComponent<Image>().color = Paper;
+
+            RectTransform handle = Rect("Trash Handle", parent);
+            handle.anchorMin = handle.anchorMax = new Vector2(0.5f, 0.5f);
+            handle.anchoredPosition = new Vector2(0f, 24f);
+            handle.sizeDelta = new Vector2(16f, 6f);
+            handle.gameObject.AddComponent<Image>().color = Paper;
         }
 
         private TMP_Dropdown BuildMenuDropdown(RectTransform root)
